@@ -1,12 +1,8 @@
-const CACHE_NAME = 'geogive-v2';
+const CACHE_NAME = 'geogive-v3';
 const OFFLINE_URL = '/index.html';
 
 self.addEventListener('install', function(event) {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll([OFFLINE_URL]);
-    })
-  );
+  // Don't pre-cache index.html — always fetch fresh
   self.skipWaiting();
 });
 
@@ -24,8 +20,9 @@ self.addEventListener('activate', function(event) {
 
 self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
+  // Network-first for HTML, cache assets
   event.respondWith(
-    fetch(event.request).then(function(response) {
+    fetch(event.request, { cache: 'no-store' }).then(function(response) {
       if (response && response.status === 200) {
         var clone = response.clone();
         caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });

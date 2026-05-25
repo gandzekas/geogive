@@ -1035,14 +1035,39 @@ function applyFilters() {
 function initSupabase() {
   SUPABASE_URL = localStorage.getItem('geogive_sb_url') || SUPABASE_URL;
   SUPABASE_KEY = localStorage.getItem('geogive_sb_key') || SUPABASE_KEY;
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    try {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      showConnIndicator(true);
-    } catch(e) { showConnIndicator(false); }
-  } else {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.warn('GeoGive: missing Supabase credentials');
     showConnIndicator(false);
+    return;
   }
+  if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
+    console.warn('GeoGive: Supabase library not loaded, retrying...');
+    showConnIndicator(false);
+    // Dynamic retry: inject script and wait for it
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+    s.onload = function() {
+      try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        showConnIndicator(true);
+        console.log('GeoGive: Supabase connected');
+        // Re-run init chain that depends on supabase
+        setupAuthListener();
+        checkSession();
+        loadItemsFromSupabase();
+      } catch(e) { console.error('GeoGive: Supabase init error', e); showConnIndicator(false); }
+    };
+    s.onerror = function() {
+      console.error('GeoGive: Failed to load Supabase CDN');
+    };
+    document.head.appendChild(s);
+    return;
+  }
+  try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    showConnIndicator(true);
+    console.log('GeoGive: Supabase connected');
+  } catch(e) { console.error('GeoGive: Supabase init error', e); showConnIndicator(false); }
 }
 
 function setupAuthListener() {
@@ -1177,7 +1202,7 @@ function switchAuthTab(tab) {
 }
 
 async function handleGoogleAuth() {
-  if (!supabase) { showAuthError('Supabase not configured. Tap your name → Settings to add credentials.'); return; }
+  if (!supabase) { showAuthError('Supabase not connected. Check Settings or refresh page.'); return; }
   var btn = document.getElementById('googleBtn');
   btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></div> Connecting...';
   btn.disabled = true;
@@ -1189,7 +1214,7 @@ async function handleGoogleAuth() {
 
 async function handleEmailAuth(e, type) {
   e.preventDefault();
-  if (!supabase) { showAuthError('Supabase not configured.'); return; }
+  if (!supabase) { showAuthError('Supabase not connected. Try again or refresh.'); return; }
   var btn = document.getElementById(type + 'SubmitBtn');
   var orig = btn.textContent;
   btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0 8px 0 0;display:inline-block;vertical-align:middle"></div>Please wait...';
@@ -2391,6 +2416,13 @@ initBottomSheetSwipe();
 showConnIndicator(false);
 
 // ===== SERVICE WORKER =====
+// Force-clear any stale service worker caches first
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(reg) { reg.unregister(); });
+  });
+}
+// Register fresh (the static sw.js is cached-bust via version name)
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then(function(reg) {
     console.log('SW registered:', reg.scope);
