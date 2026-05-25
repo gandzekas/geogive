@@ -1039,7 +1039,7 @@ function initSupabase() {
     showConnIndicator(false);
     return;
   }
-  if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
     console.warn('GeoGive: Supabase library not loaded, retrying...');
     showConnIndicator(false);
     // Dynamic retry: inject script and wait for it
@@ -2415,32 +2415,12 @@ initBottomSheetSwipe();
 showConnIndicator(false);
 
 // ===== SERVICE WORKER =====
-// Force-clear any stale service worker caches first
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(regs) {
-    regs.forEach(function(reg) { reg.unregister(); });
-  });
-}
-// Register fresh (the static sw.js is cached-bust via version name)
+// Register service worker — SW version bump handles cache invalidation
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then(function(reg) {
-    console.log('SW registered:', reg.scope);
-    // Force new SW to activate immediately when an update is found
-    reg.addEventListener('updatefound', function() {
-      var newWorker = reg.installing;
-      newWorker.addEventListener('statechange', function() {
-        if (newWorker.state === 'activated') {
-          console.log('New SW activated — reloading for fresh content');
-          window.location.reload();
-        }
-      });
-    });
+    console.log('GeoGive: SW registered', reg.scope);
   }).catch(function(err) {
-    console.warn('SW registration failed:', err);
-  });
-  // Also check for controller changes (SW updates from other tabs)
-  navigator.serviceWorker.addEventListener('controllerchange', function() {
-    window.location.reload();
+    console.warn('GeoGive: SW registration failed:', err);
   });
 }
 
