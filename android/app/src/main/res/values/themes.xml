@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    themes.xml — Android theme definitions for GeoGive TWA
+
+    The main theme applies to LauncherActivity (the TWA).
+    The splash theme shows during app launch before the TWA is ready.
+
+    Colors match the PWA's theme_color (#2d8a4e) and background_color (#f7f7f7)
+    from manifest.json.
+-->
+<resources>
+
+    <!-- Base application theme -->
+    <style name="Theme.GeoGive" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <!-- Primary brand color (matches PWA theme_color) -->
+        <item name="colorPrimary">#2d8a4e</item>
+        <item name="colorPrimaryDark">#1b5e20</item>
+        <item name="colorAccent">#f57c00</item>
+
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">#1b5e20</item>
+        <item name="android:navigationBarColor">#2d8a4e</item>
+
+        <!-- Disable action bar (TWA is full-screen) -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle>true</item>
+    </style>
+
+    <!-- Splash screen theme — shown while TWA loads -->
+    <style name="Theme.GeoGive.Splash" parent="Theme.GeoGive">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">#2d8a4e</item>
+        <item name="android:navigationBarColor">#2d8a4e</item>
+    </style>
+
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    file_paths.xml — FileProvider paths for camera/image capture.
+
+    When users take photos of items to give away, the camera app
+    needs a place to save the image temporarily. This defines
+    accessible paths for the FileProvider.
+-->
+<paths>
+    <cache-path
+        name="cache"
+        path="." />
+    <files-path
+        name="files"
+        path="." />
+    <external-cache-path
+        name="external_cache"
+        path="." />
+</paths>

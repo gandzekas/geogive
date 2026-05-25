@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2d8a4e">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: tile.openstreetmap.org *.tile.openstreetmap.org *.cloudfront.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co tile.openstreetmap.org https://*.firebaseapp.com https://*.googleapis.com wss://*.firebaseio.com;">
+<title>GeoGive - Give Items Away Locally</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+:root {
+  --green: #2d8a4e;
+  --green-light: #e8f5e9;
+  --orange: #f57c00;
+  --orange-light: #fff3e0;
+  --gray-100: #f7f7f7;
+  --gray-200: #e0e0e0;
+  --gray-400: #9e9e9e;
+  --gray-700: #424242;
+  --gray-900: #212121;
+  --radius: 12px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--gray-100);
+  color: var(--gray-900);
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+header {
+  background: linear-gradient(135deg, var(--green), #1b5e20);
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+header h1 { font-size: 1.4rem; font-weight: 700; }
+header h1 span { font-size: 1.6rem; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.user-info {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.15); padding: 4px 12px;
+  border-radius: 20px; font-size: 0.8rem; cursor: pointer;
+}
+.user-info:hover { background: rgba(255,255,255,0.25); }
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; overflow: hidden;
+}
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.upgrade-btn, .login-btn, .logout-btn {
+  background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4);
+  color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem;
+  cursor: pointer; transition: background 0.2s;
+}
+.upgrade-btn:hover, .login-btn:hover, .logout-btn:hover { background: rgba(255,255,255,0.35); }
+.logout-btn { background: rgba(255,0,0,0.15); font-size: 0.75rem; padding: 4px 10px; }
+.login-btn { background: var(--orange); border-color: var(--orange); }
+.login-btn:hover { background: #e65100; }
+main { padding: 16px; max-width: 800px; margin: 0 auto; }
+.page { display: none; }
+.page.active { display: block; }
+/* Bottom Nav */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: white; display: flex; border-top: 1px solid var(--gray-200);
+  z-index: 100; box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+}
+.nav-tab {
+  flex: 1; padding: 10px 4px; text-align: center;
+  background: none; border: none; cursor: pointer;
+  font-size: 0.7rem; color: var(--gray-400); transition: color 0.2s;
+}
+.nav-tab .nav-icon { display: block; font-size: 1.4rem; margin-bottom: 2px; }
+.nav-tab.active { color: var(--green); }
+/* View toggle */
+.view-toggle {
+  display: flex; gap: 4px; margin-bottom: 12px;
+  background: var(--gray-200); border-radius: 8px; padding: 3px;
+}
+.view-toggle button {
+  flex: 1; padding: 8px; border: none; border-radius: 6px;
+  background: none; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+  color: var(--gray-400); transition: all 0.2s;
+}
+.view-toggle button.active { background: white; color: var(--green); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+/* Map */
+#mapContainer { display: none; margin-bottom: 16px; }
+#mapContainer.active { display: block; }
+#map {
+  height: 300px; border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.map-popup { min-width: 150px; }
+.map-popup h4 { font-size: 0.9rem; margin-bottom: 4px; }
+.map-popup p { font-size: 0.8rem; color: var(--gray-700); margin-bottom: 6px; }
+.map-popup .btn { width: 100%; }
+/* Radius slider */
+.radius-bar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  background: white; padding: 10px 14px; border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.radius-bar label { font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+.radius-bar input[type="range"] { flex: 1; accent-color: var(--green); }
+.radius-bar .radius-value { font-size: 0.85rem; font-weight: 700; color: var(--green); min-width: 45px; text-align: right; }
+/* Location status */
+.loc-status {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 12px;
+  padding: 8px 14px; border-radius: var(--radius); font-size: 0.8rem;
+}
+.loc-status.granted { background: var(--green-light); color: var(--green); }
+.loc-status.denied { background: var(--orange-light); color: var(--orange); }
+.loc-status.pending { background: var(--gray-200); color: var(--gray-700); }
+/* Cards */
+.item-card {
+  background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+  overflow: hidden; margin-bottom: 12px; transition: transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+.item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.item-image {
+  height: 160px; display: flex; align-items: center; justify-content: center; font-size: 3rem;
+}
+.item-image img { width: 100%; height: 100%; object-fit: cover; }
+.item-info { padding: 14px; }
+.item-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
+.item-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.badge {
+  display: inline-block; padding: 2px 10px; border-radius: 12px;
+  font-size: 0.75rem; font-weight: 500;
+}
+.badge-category { background: var(--green-light); color: var(--green); }
+.badge-condition { background: var(--orange-light); color: var(--orange); }
+.badge-distance { background: #e3f2fd; color: #1565c0; }
+.item-desc { font-size: 0.85rem; color: var(--gray-700); margin-bottom: 10px; line-height: 1.4; }
+.item-actions { display: flex; gap: 8px; align-items: center; }
+.btn {
+  padding: 8px 18px; border: none; border-radius: 8px;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.btn:focus { outline: 3px solid var(--green); outline-offset: 2px; }
+.btn-primary { background: var(--green); color: white; }
+.btn-primary:hover { background: #237a3e; }
+.btn-secondary { background: var(--gray-200); color: var(--gray-700); }
+.btn-secondary:hover { background: #d0d0d0; }
+.btn-pro { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; font-size: 0.75rem; }
+.btn-danger { background: #ef5350; color: white; }
+.btn-danger:hover { background: #e53935; }
+.btn-sm { padding: 5px 12px; font-size: 0.75rem; }
+.btn-full { width:100%; padding:12px; font-size:1rem; }
+/* Filter */
+.filter-bar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+.filter-bar select, .filter-bar input {
+  padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 8px;
+  font-size: 0.9rem; background: white;
+}
+.filter-bar input { flex: 1; min-width: 120px; }
+/* Forms */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200);
+  border-radius: 8px; font-size: 0.95rem; font-family: inherit;
+}
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+  outline: 2px solid var(--green); border-color: var(--green);
+}
+.form-group textarea { resize: vertical; min-height: 80px; }
+.form-card { background: white; border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+/* Chat */
+.chat-header { padding: 14px 16px; background: var(--green); color: white; font-weight: 600; }
+.chat-messages { padding: 16px; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.chat-msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 0.9rem; line-height: 1.4; }
+.chat-msg.sent { align-self: flex-end; background: var(--green); color: white; border-bottom-right-radius: 4px; }
+.chat-msg.received { align-self: flex-start; background: var(--gray-200); color: var(--gray-900); border-bottom-left-radius: 4px; }
+.chat-input { display: flex; padding: 12px; border-top: 1px solid var(--gray-200); gap: 8px; }
+.chat-input input { flex: 1; padding: 8px 14px; border: 1px solid var(--gray-200); border-radius: 20px; font-size: 0.9rem; }
+/* Status badges */
+.status-available { background: var(--green-light); color: var(--green); }
+.status-pending { background: var(--orange-light); color: var(--orange); }
+.status-given { background: #e3f2fd; color: #1565c0; }
+/* Empty state */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--gray-400); }
+.empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 200;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: white; border-radius: var(--radius); max-width: 500px; width: 100%;
+  max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { font-size: 1.1rem; }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray-400); padding: 4px; }
+.modal-body { padding: 20px; }
+/* Request card */
+.request-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; margin-bottom: 12px; }
+.request-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.request-card-title { font-weight: 600; }
+.request-card-time { font-size: 0.8rem; color: var(--gray-400); }
+.request-card-item { font-size: 0.85rem; color: var(--gray-700); margin-bottom: 8px; }
+/* Toast */
+.toast {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+  background: var(--gray-900); color: white; padding: 10px 20px;
+  border-radius: 8px; font-size: 0.85rem; z-index: 300; opacity: 0; transition: opacity 0.3s;
+}
+.toast.show { opacity: 1; }
+/* Auth */
+.auth-tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid var(--gray-200); }
+.auth-tab {
+  flex: 1; padding: 10px; text-align: center; background: none; border: none;
+  cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--gray-400);
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+}
+.auth-tab.active { color: var(--green); border-bottom-color: var(--green); }
+.auth-form { display: none; }
+.auth-form.active { display: block; }
+.divider { text-align: center; margin: 16px 0; color: var(--gray-400); font-size: 0.85rem; position: relative; }
+.divider::before, .divider::after { content:''; position:absolute; top:50%; width:40%; height:1px; background:var(--gray-200); }
+.divider::before { left:0; } .divider::after { right:0; }
+.btn-google {
+  width:100%; padding:10px; border:1px solid var(--gray-200); border-radius:8px;
+  background:white; cursor:pointer; font-size:0.9rem; font-weight:600;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-google:hover { background: var(--gray-100); }
+/* Spinner */
+.spinner {
+  display: inline-block; width: 20px; height: 20px;
+  border: 3px solid rgba(255,255,255,0.3); border-radius: 50%;
+  border-top-color: white; animation: spin 0.8s linear infinite; margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay {
+  display: none; position: fixed; top:0; left:0; right:0; bottom:0;
+  background: rgba(255,255,255,0.7); z-index: 400;
+  align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+}
+.loading-overlay.active { display: flex; }
+.loading-overlay .spinner { border-color: rgba(45,138,78,0.2); border-top-color: var(--green); width: 40px; height: 40px; border-width: 4px; }
+.loading-overlay span { color: var(--green); font-weight: 600; font-size: 0.9rem; }
+/* Image upload */
+.image-upload-area {
+  border: 2px dashed var(--gray-200); border-radius: 8px; padding: 24px;
+  text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 8px;
+}
+.image-upload-area:hover { border-color: var(--green); background: var(--green-light); }
+.image-upload-area input[type="file"] { display: none; }
+.image-upload-hint { color: var(--gray-400); font-size: 0.85rem; }
+.image-upload-hint span { font-size: 1.8rem; display: block; margin-bottom: 6px; }
+.compress-indicator { font-size: 0.75rem; color: var(--green); margin-top: 4px; display: none; }
+.compress-indicator.active { display: block; }
+.image-preview-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.image-preview { width: 70px; height: 70px; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid var(--gray-200); }
+.image-preview img { width: 100%; height: 100%; object-fit: cover; }
+.image-preview .remove-btn {
+  position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%;
+  background: #ef5350; color: white; border: none; cursor: pointer; font-size: 0.75rem;
+  display: flex; align-items: center; justify-content: center;
+}
+/* Connection indicator */
+
+/* Notifications */
+.notif-bell {
+  position: relative; cursor: pointer; font-size: 1.2rem;
+  background: none; border: none; color: white; padding: 4px 8px;
+}
+.notif-bell .badge {
+  position: absolute; top: -2px; right: -2px;
+  background: #ef5350; color: white; font-size: 0.65rem;
+  padding: 1px 5px; border-radius: 10px; display: none;
+}
+.notif-bell .badge.show { display: block; }
+.notif-dropdown {
+  display: none; position: absolute; top: 100%; right: 0;
+  background: white; border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  width: 300px; max-height: 300px; overflow-y: auto; z-index: 200;
+}
+.notif-dropdown.active { display: block; }
+.notif-item { padding: 10px 14px; border-bottom: 1px solid var(--gray-200); font-size: 0.85rem; cursor: pointer; }
+.notif-item:hover { background: var(--gray-100); }
+.notif-item.unread { background: var(--green-light); }
+.notif-item.empty { color: var(--gray-400); text-align: center; padding: 20px; }
+
+/* Expired toggle */
+.expired-toggle {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.75rem; color: var(--gray-700); cursor: pointer;
+  white-space: nowrap;
+}
+.expired-toggle input { accent-color: var(--green); }
+
+/* Profile editing */
+.profile-edit-card {
+  background: white; border-radius: var(--radius); padding: 20px;
+  box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.profile-edit-card h3 { margin-bottom: 16px; color: var(--green); }
+.profile-edit-card .avatar-preview {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: var(--green-light); display: flex; align-items: center;
+  justify-content: center; font-size: 2rem; margin: 0 auto 12px;
+  overflow: hidden;
+}
+.profile-edit-card .avatar-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.profile-edit-card label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: var(--gray-700); }
+.profile-edit-card input, .profile-edit-card textarea {
+  width: 100%; padding: 10px; border: 1px solid var(--gray-200);
+  border-radius: 8px; font-size: 0.9rem; margin-bottom: 12px;
+  font-family: inherit;
+}
+.profile-edit-card textarea { resize: vertical; min-height: 60px; }
+
+
+/* ===== BOTTOM SHEETS ===== */
+.bottom-sheet-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); z-index: 210;
+  align-items: flex-end; justify-content: center;
+}
+.bottom-sheet-overlay.active { display: flex; }
+.bottom-sheet {
+  background: white; border-radius: 20px 20px 0 0; width: 100%; max-width: 600px;
+  max-height: 85vh; overflow-y: auto; box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+  animation: slideUp 0.3s ease; position: relative;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.bottom-sheet-handle {
+  width: 40px; height: 4px; background: var(--gray-200); border-radius: 2px;
+  margin: 12px auto; flex-shrink: 0;
+}
+.bottom-sheet-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 20px 12px; border-bottom: 1px solid var(--gray-200);
+}
+.bottom-sheet-header h3 { font-size: 1.1rem; }
+.bottom-sheet-body { padding: 16px 20px; }
+
+/* ===== FAB ===== */
+.fab {
+  position: fixed; bottom: 80px; right: 20px; z-index: 105;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--orange); color: white; border: none; cursor: pointer;
+  font-size: 1.8rem; box-shadow: 0 4px 16px rgba(245,124,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.fab:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(245,124,0,0.5); }
+.fab:active { transform: scale(0.95); }
+
+/* ===== PULL TO REFRESH ===== */
+.ptr-indicator {
+  text-align: center; padding: 8px; font-size: 0.8rem; color: var(--gray-400);
+  display: none;
+}
+.ptr-indicator.active { display: block; }
+
+/* ===== CHAT PAGE (full screen) ===== */
+#page-chat {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--gray-100); z-index: 140; flex-direction: column;
+}
+#page-chat.active { display: flex; }
+.chat-page-header {
+  background: var(--green); color: white; padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.chat-page-header .back-btn {
+  background: none; border: none; color: white; font-size: 1.3rem; cursor: pointer;
+  padding: 4px 8px; border-radius: 8px;
+}
+.chat-page-header .back-btn:hover { background: rgba(255,255,255,0.2); }
+.chat-page-header h3 { font-size: 1rem; flex: 1; }
+.chat-page-messages {
+  flex: 1; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.chat-page-input {
+  display: flex; padding: 12px 16px; border-top: 1px solid var(--gray-200);
+  background: white; gap: 8px; flex-shrink: 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+.chat-page-input input {
+  flex: 1; padding: 10px 16px; border: 1px solid var(--gray-200);
+  border-radius: 24px; font-size: 0.95rem;
+}
+
+
+/* ===== TRUST & SAFETY ===== */
+.user-profile-card {
+  background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 20px; margin-bottom: 16px; text-align: center;
+}
+.user-profile-card .avatar {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 12px;
+  background: var(--green-light); display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem; overflow: hidden;
+}
+.user-profile-card .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.user-profile-card h3 { font-size: 1.1rem; margin-bottom: 4px; }
+.user-profile-card .stats { display: flex; justify-content: center; gap: 20px; margin: 12px 0; }
+.user-profile-card .stat { text-align: center; }
+.user-profile-card .stat-value { font-size: 1.3rem; font-weight: 700; color: var(--green); }
+.user-profile-card .stat-label { font-size: 0.75rem; color: var(--gray-400); }
+.verified-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--green-light); color: var(--green); padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+.star-rating { display: flex; gap: 4px; justify-content: center; margin: 8px 0; }
+.star-rating .star { font-size: 1.5rem; cursor: pointer; opacity: 0.3; transition: opacity 0.2s; }
+.star-rating .star.active { opacity: 1; }
+.star-rating .star:hover { opacity: 0.7; }
+.star-display { color: #ffc107; font-size: 0.9rem; }
+.report-btn { background: none; border: 1px solid var(--gray-200); color: var(--gray-400); padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; cursor: pointer; }
+.report-btn:hover { border-color: #ef5350; color: #ef5350; }
+.safety-tips { background: var(--orange-light); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; font-size: 0.85rem; }
+.safety-tips h4 { margin-bottom: 8px; color: var(--orange); }
+.safety-tips ul { padding-left: 20px; }
+.safety-tips li { margin-bottom: 4px; }
+.rating-prompt {
+  background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 20px; margin-bottom: 16px; text-align: center;
+}
+.rating-prompt h4 { margin-bottom: 12px; }
+
+.conn-indicator { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; display: none; }
+.conn-indicator.offline { background: #f44336; }
+#offlineBanner { display: none; background: #fff3e0; color: #e65100; padding: 8px 16px; font-size: 0.8rem; text-align: center; font-weight: 500; }
+/* Settings */
+.settings-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+.settings-row .form-group { flex: 1; margin-bottom: 0; }
+@media (min-width: 600px) {
+  .items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+}
+/* Leaflet overrides */
+.leaflet-container { font-family: inherit; }
+/* Category icon in badge */
+.badge-category { display: inline-flex; align-items: center; gap: 4px; }
+.cat-icon svg { display: block; }
+/* Expiration badges */
+.badge-expiring { background: #fff3e0; color: #e65100; }
+.badge-expired { background: #ffcdd2; color: #b71c1c; }
+.item-card.expired { opacity: 0.6; filter: grayscale(60%); }
+/* Expired dimming for card */
+.item-card.expired .item-image { filter: grayscale(80%); }
+/* Filter chip with icon */
+.filter-chip { display: inline-flex; align-items: center; gap: 4px; }
+/* Profile avatar */
+.profile-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--green-light); display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; overflow: hidden; }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.profile-avatar-lg { width: 80px; height: 80px; border-radius: 50%; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 12px; overflow: hidden; cursor: pointer; position: relative; }
+.profile-avatar-lg img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.profile-avatar-lg .edit-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); color: white; font-size: 0.65rem; text-align: center; padding: 2px 0; }
+/* Notification toggle */
+.notif-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-200); }
+.notif-toggle-row .label { font-size: 0.9rem; font-weight: 500; }
+.toggle-switch { width: 44px; height: 24px; background: var(--gray-200); border-radius: 12px; position: relative; cursor: pointer; transition: background 0.2s; display: inline-block; }
+.toggle-switch.on { background: var(--green); }
+.toggle-switch::after { content:''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.toggle-switch.on::after { transform: translateX(20px); }
+/* Show expired toggle */
+.show-expired-toggle { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-left: auto; }
+</style>
+</head>
+<body>
+
+<div id="offlineBanner">📡 You're offline — some features may be limited</div>
+
+<header>
+  <h1><span>🎁</span> GeoGive</h1>
+  <div class="header-right">
+    <div class="conn-indicator" id="connIndicator" title="Connection status"></div>
+    <div style="position:relative;">
+      <button class="notif-bell" id="notifBell" onclick="toggleNotifDropdown()" aria-label="Notifications">
+        🔔 <span class="badge" id="notifBadge">0</span>
+      </button>
+      <div class="notif-dropdown" id="notifDropdown">
+        <div class="notif-item empty" id="notifEmpty">No notifications yet</div>
+      </div>
+    </div>
+    <div id="authButtons">
+      <button class="login-btn" id="loginBtn" onclick="openAuthModal()" aria-label="Sign in">Sign In</button>
+    </div>
+    <div id="userInfo" style="display:none; align-items:center; gap:8px;">
+      <div class="user-info" onclick="openSettingsModal()" id="userInfoBtn">
+        <div class="user-avatar" id="userAvatarSmall">👤</div>
+        <span id="userNameDisplay">User</span>
+      </div>
+      <button class="logout-btn" onclick="handleLogout()" aria-label="Sign out">Out</button>
+    </div>
+  </div>
+</header>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <span>Loading...</span>
+</div>
+
+<main>
+  <!-- BROWSE PAGE -->
+  <div class="page active" id="page-browse" role="region" aria-label="Browse items">
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="🔍 Search..." aria-label="Search items" oninput="debounceSearch()">
+      <select id="categoryFilter" aria-label="Filter by category" onchange="applyFilters()">
+        <option value="all">All Categories</option>
+        <option value="electronics">Electronics</option>
+        <option value="clothing">Clothing</option>
+        <option value="books">Books</option>
+        <option value="furniture">Furniture</option>
+        <option value="kitchen">Kitchen</option>
+        <option value="sports">Sports</option>
+        <option value="toys">Toys</option>
+        <option value="garden">Garden</option>
+        <option value="food">Food</option>
+        <option value="other">Other</option>
+      </select>
+      <label class="expired-toggle">
+        <input type="checkbox" id="showExpiredToggle" onchange="toggleShowExpired()">
+        <span>Show expired</span>
+      </label>
+    </div>
+    <div id="locationStatus" class="loc-status pending">📍 Detecting your location...</div>
+    <div class="radius-bar">
+      <label>Radius:</label>
+      <input type="range" id="radiusSlider" min="1" max="50" value="10" oninput="updateRadiusLabel()" onchange="applyFilters()">
+      <span class="radius-value" id="radiusValue">10 mi</span>
+    </div>
+    <div class="view-toggle">
+      <button class="active" id="viewListBtn" onclick="setView('list')">📋 List</button>
+      <button id="viewMapBtn" onclick="setView('map')">🗺️ Map</button>
+    </div>
+    <div id="mapContainer">
+      <div id="map" role="application" aria-label="Map showing nearby items"></div>
+    </div>
+    <div class="ptr-indicator" id="ptrIndicator">↓ Pull to refresh</div>
+    <div id="browseList" class="items-grid"></div>
+  </div>
+
+  <!-- LIST ITEM PAGE -->
+  <div class="page" id="page-list" role="region" aria-label="List an item">
+    <div class="form-card">
+      <h2 style="margin-bottom:16px">📸 List an Item</h2>
+      <form id="listForm" onsubmit="handleListSubmit(event)">
+        <div class="form-group">
+          <label for="itemName">Item Name *</label>
+          <input type="text" id="itemName" required placeholder="e.g., Vintage Leather Jacket" aria-required="true">
+        </div>
+        <div class="form-group">
+          <label for="itemDesc">Description</label>
+          <textarea id="itemDesc" placeholder="Describe the item — size, color, condition details..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="itemCategory">Category *</label>
+          <select id="itemCategory" required aria-required="true">
+            <option value="">Select category...</option>
+            <option value="electronics">📱 Electronics</option>
+            <option value="clothing">👕 Clothing</option>
+            <option value="books">📚 Books</option>
+            <option value="furniture">🪑 Furniture</option>
+            <option value="kitchen">🍳 Kitchen</option>
+            <option value="sports">⚽ Sports</option>
+            <option value="toys">🧸 Toys</option>
+            <option value="garden">🌱 Garden</option>
+            <option value="food">🍎 Food</option>
+            <option value="other">📦 Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="itemCondition">Condition *</label>
+          <select id="itemCondition" required aria-required="true">
+            <option value="">Select condition...</option>
+            <option value="Like New">Like New</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="For Parts">For Parts</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="itemLocation">Your Zip Code *</label>
+          <input type="text" id="itemLocation" required placeholder="e.g., 90210" pattern="[0-9]{5}" aria-required="true">
+        </div>
+        <div class="form-group">
+          <label>Photos <span style="font-weight:400;color:var(--gray-400)">(max 5, auto-compressed)</span></label>
+          <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('imageInput').click()">
+            <div class="image-upload-hint"><span>📷</span>Tap to add photos</div>
+            <input type="file" id="imageInput" accept="image/*" capture="environment" multiple onchange="handleImageSelect(event)">
+          </div>
+          <div id="imageError" style="color:#ef5350;font-size:0.8rem;display:none" role="alert"></div>
+          <div id="compressIndicator" class="compress-indicator">📸 Compressing images for faster upload...</div>
+          <div class="image-preview-grid" id="imagePreviewGrid"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">🎁 List Item for Free</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MY LISTINGS PAGE -->
+  <div class="page" id="page-mylistings" role="region" aria-label="My listings">
+    <h2 style="margin-bottom:16px">📋 My Listings</h2>
+    <div id="myListingsList"></div>
+  </div>
+
+  <!-- REQUESTS PAGE -->
+  <div class="page" id="page-requests" role="region" aria-label="Requests and messages">
+    <h2 style="margin-bottom:16px">💬 Requests & Messages</h2>
+    <div id="requestsList"></div>
+  </div>
+</main>
+<button class="fab" onclick="switchPage('list')" aria-label="List an item">➕</button>
+
+
+  <!-- CHAT PAGE (full screen overlay) -->
+  <div id="page-chat">
+    <div class="chat-page-header">
+      <button class="back-btn" onclick="closeChatPage()" aria-label="Back">←</button>
+      <h3 id="chatPageTitle">Chat</h3>
+    </div>
+    <div class="chat-page-messages" id="chatPageMessages"></div>
+    <div class="chat-page-input">
+      <input type="text" id="chatPageInput" placeholder="Type a message..." aria-label="Message input" onkeydown="if(event.key==='Enter')sendChatMsg()">
+      <button class="btn btn-primary btn-sm" onclick="sendChatMsg()">Send</button>
+    </div>
+  </div>
+<!-- ITEM DETAIL MODAL -->
+<div class="bottom-sheet-overlay" id="itemModal" role="dialog" aria-modal="true" aria-label="Item details">
+  <div class="bottom-sheet" id="itemBottomSheet">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <h3 id="modalTitle">Item Details</h3>
+      <button class="modal-close" onclick="closeModal('itemModal')" aria-label="Close">&times;</button>
+    </div>
+    <div class="bottom-sheet-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- CHAT MODAL -->
+<div class="modal-overlay" id="chatModal" role="dialog" aria-modal="true" aria-label="Chat conversation">
+  <div class="modal" style="max-width:420px;display:flex;flex-direction:column;height:70vh">
+    <div class="chat-header" id="chatHeader">Chat</div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="Type a message..." aria-label="Message input" onkeydown="if(event.key==='Enter')sendChatMsg()">
+      <button class="btn btn-primary btn-sm" onclick="sendChatMsg()">Send</button>
+    </div>
+    <button class="modal-close" onclick="closeModal('chatModal')" style="position:absolute;top:10px;right:10px;color:white" aria-label="Close chat">&times;</button>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="authModal" role="dialog" aria-modal="true" aria-label="Sign in or sign up">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>Welcome to GeoGive</h3>
+      <button class="modal-close" onclick="closeModal('authModal')" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-signin" onclick="switchAuthTab('signin')" aria-selected="true">Sign In</button>
+        <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')" aria-selected="false">Sign Up</button>
+      </div>
+      <button class="btn-google" id="googleBtn" onclick="handleGoogleAuth()">
+        <span>🔵</span> Continue with Google
+      </button>
+      <div class="divider">or</div>
+      <form id="signinForm" class="auth-form active" onsubmit="handleEmailAuth(event, 'signin')">
+        <div class="form-group">
+          <label for="signinEmail">Email</label>
+          <input type="email" id="signinEmail" required placeholder="you@example.com" aria-required="true">
+        </div>
+        <div class="form-group">
+          <label for="signinPassword">Password</label>
+          <input type="password" id="signinPassword" required placeholder="••••••••" aria-required="true" minlength="6">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="signinSubmitBtn">Sign In</button>
+      </form>
+      <form id="signupForm" class="auth-form" onsubmit="handleEmailAuth(event, 'signup')">
+        <div class="form-group">
+          <label for="signupName">Display Name</label>
+          <input type="text" id="signupName" required placeholder="Your name" aria-required="true">
+        </div>
+        <div class="form-group">
+          <label for="signupEmail">Email</label>
+          <input type="email" id="signupEmail" required placeholder="you@example.com" aria-required="true">
+        </div>
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input type="password" id="signupPassword" required placeholder="Min 6 characters" aria-required="true" minlength="6">
+        </div>
+        <div class="form-group">
+          <label for="signupZip">Zip Code</label>
+          <input type="text" id="signupZip" required placeholder="e.g., 90210" pattern="[0-9]{5}" aria-required="true">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="signupSubmitBtn">Create Account</button>
+      </form>
+      <p id="authError" style="color:#ef5350;font-size:0.85rem;margin-top:12px;display:none" role="alert"></p>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>⚙️ Settings</h3>
+      <button class="modal-close" onclick="closeModal('settingsModal')" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--gray-400);margin-bottom:16px;">Connect to a Supabase backend for real-time sync across devices. <a href="https://supabase.com" target="_blank" rel="noopener" style="color:var(--green)">Create a free project →</a></p>
+      <button class="btn btn-secondary btn-full" onclick="closeModal('settingsModal');openEditProfile()" style="margin-bottom:16px">✏️ Edit My Profile</button>
+      <div class="form-group">
+        <label for="settingsSbUrl">Supabase URL</label>
+        <input type="url" id="settingsSbUrl" placeholder="https://xxxxx.supabase.co">
+      </div>
+      <div class="form-group">
+        <label for="settingsSbKey">Supabase Anon Key</label>
+        <input type="password" id="settingsSbKey" placeholder="eyJhbGciOiJIUzI1NiIs...">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="saveSettings()">Save & Connect</button>
+      <div style="margin-top:12px;text-align:center">
+        <button class="btn btn-secondary btn-sm" onclick="clearSettings()">Disconnect</button>
+      </div>
+      <p id="settingsStatus" style="font-size:0.8rem;margin-top:12px;text-align:center;color:var(--gray-400)"></p>
+    </div>
+  </div>
+</div>
+
+
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModal" role="dialog" aria-modal="true" aria-label="Report user">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <h3>Report User</h3>
+      <button class="modal-close" onclick="closeModal('reportModal')" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--gray-700);margin-bottom:12px;">Help keep GeoGive safe. All reports are reviewed.</p>
+      <div class="form-group">
+        <label>Reason</label>
+        <select id="reportReason">
+          <option value="spam">Spam or scam</option>
+          <option value="no_show">No-show / flaking</option>
+          <option value="inappropriate">Inappropriate behavior</option>
+          <option value="fake">Fake listing</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Details (optional)</label>
+        <textarea id="reportDetails" rows="3" placeholder="Describe what happened..."></textarea>
+      </div>
+      <button class="btn btn-danger btn-full" onclick="submitReport()">Submit Report</button>
+    </div>
+  </div>
+</div>
+<!-- TOAST -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" role="tablist" aria-label="Main navigation">
+  <button class="nav-tab active" role="tab" aria-selected="true" aria-controls="page-browse" data-page="browse" onclick="switchPage('browse')" id="tab-browse">
+    <span class="nav-icon" aria-hidden="true">🏠</span>Browse
+  </button>
+  <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-list" data-page="list" onclick="switchPage('list')" id="tab-list">
+    <span class="nav-icon" aria-hidden="true">➕</span>List Item
+  </button>
+  <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-mylistings" data-page="mylistings" onclick="switchPage('mylistings')" id="tab-mylistings">
+    <span class="nav-icon" aria-hidden="true">📋</span>My Listings
+  </button>
+  <button class="nav-tab" role="tab" aria-selected="false" aria-controls="page-requests" data-page="requests" onclick="switchPage('requests')" id="tab-requests">
+    <span class="nav-icon" aria-hidden="true">💬</span>Requests
+  </button>
+</nav>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ===== CONFIGURATION =====
+var SUPABASE_URL = '';
+var SUPABASE_KEY = '';
+var supabase = null;
+var isOnline = navigator.onLine;
+
+// ===== STATE =====
+var lastFocusedElement = null;
+var state = {
+  user: null, session: null, userProfile: null,
+  items: [], requests: [], chats: {},
+  currentChatId: null,
+  notifications: [], notifPermission: 'default', selectedImages: [], searchTimer: null,
+  authListener: null,
+  // Geolocation state
+  userLocation: null,  // { lat, lng } or null
+  locationStatus: 'pending',  // 'pending' | 'granted' | 'denied'
+  map: null, mapMarkers: [],
+  currentView: 'list',  // 'list' | 'map'
+  radiusMiles: 10
+};
+
+var timers = [];
+function setTrackedTimeout(fn, ms) {
+  var id = setTimeout(function() { fn(); removeTimer(id); }, ms);
+  timers.push(id);
+  return id;
+}
+function removeTimer(id) { var i = timers.indexOf(id); if (i > -1) timers.splice(i, 1); }
+function clearAllTimers() { timers.forEach(function(id) { clearTimeout(id); }); timers = []; }
+
+var CATEGORY_EMOJI = { electronics: '📱', clothing: '👕', books: '📚', furniture: '🪑', kitchen: '🍳', sports: '⚽', toys: '🧸', garden: '🌱', food: '🍎', other: '📦' };
+var CATEGORY_COLORS = { electronics: '#e0f7fa', clothing: '#e8eaf6', books: '#fce4ec', furniture: '#efebe9', kitchen: '#fff8e1', sports: '#e8f5e9', toys: '#fff3e0', garden: '#e8f5e9', food: '#fbe9e7', other: '#f3e5f5' };
+var CATEGORY_DISPLAY = { electronics: 'Electronics', clothing: 'Clothing', books: 'Books', furniture: 'Furniture', kitchen: 'Kitchen', sports: 'Sports', toys: 'Toys', garden: 'Garden', food: 'Food', other: 'Other' };
+var CATEGORY_ICONS = {
+  electronics: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00838f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
+  clothing: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#5c6bc0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.4a2 2 0 0 0-1.8-1.1H5.42a2 2 0 0 0-1.8 1.1L2 8l4.5 2.5V13h11v-2.5L22 8z"/><path d="M6 13v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6"/></svg>',
+  books: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e91e63" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  furniture: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#795548" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  kitchen: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#f57c00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>',
+  sports: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#43a047" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M6.07 6.07l11.86 11.86"/><path d="M17.93 6.07L6.07 17.93"/></svg>',
+  toys: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ff9800" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>',
+  garden: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#689f38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg>',
+  food: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#e64a19" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+  other: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#9e9e9e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>'
+};
+function getCategoryIconHtml(category, size) {
+  size = size || 24;
+  var cat = category || 'other';
+  if (CATEGORY_ICONS[cat]) {
+    return '<span class="cat-icon" style="width:' + size + 'px;height:' + size + 'px;display:inline-flex;align-items:center;justify-content:center">' + CATEGORY_ICONS[cat].replace('viewBox="0 0 24 24"', 'viewBox="0 0 24 24" width="' + size + '" height="' + size + '"') + '</span>';
+  }
+  return '<span style="font-size:' + (size * 0.8) + 'px">' + (CATEGORY_EMOJI[cat] || '📦') + '</span>';
+}
+var MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+var MAX_TOTAL_IMAGE_SIZE = 8 * 1024 * 1024;
+var MAX_IMAGES = 5;
+
+// ===== GEOLOCATION =====
+function initGeolocation() {
+  var statusEl = document.getElementById('locationStatus');
+  if (!navigator.geolocation) {
+    state.locationStatus = 'denied';
+    statusEl.className = 'loc-status denied';
+    statusEl.textContent = '📍 Location not available — enter zip code to set your area';
+    return;
+  }
+  statusEl.className = 'loc-status pending';
+  statusEl.textContent = '📍 Detecting your location...';
+  
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      state.userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      state.locationStatus = 'granted';
+      statusEl.className = 'loc-status granted';
+      statusEl.textContent = '📍 Location found — showing distances from your area';
+      // Recalculate distances and re-render
+      recalculateDistances();
+      applyFilters();
+      // If map view is active, update map center
+      if (state.map && state.currentView === 'map') {
+        state.map.setView([state.userLocation.lat, state.userLocation.lng], 13);
+        renderMapMarkers();
+      }
+    },
+    function(err) {
+      state.locationStatus = 'denied';
+      state.userLocation = null;
+      statusEl.className = 'loc-status denied';
+      if (err.code === 1) {
+        statusEl.textContent = '📍 Location denied — enable location in browser settings or enter zip code manually';
+      } else {
+        statusEl.textContent = '📍 Location unavailable — enter zip code to set your area';
+      }
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+  );
+}
+
+// Haversine distance in miles between two lat/lng points
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  var R = 3958.8; // Earth radius in miles
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// Simple zip code to lat/lng lookup (approximate, for fallback)
+// In production, use a geocoding API. This is a rough US-centric approximation.
+function zipToLatLng(zip) {
+  // Use a simple approach: try to get from item's stored coordinates
+  // For now, return null — real geocoding requires an API
+  return null;
+}
+
+function recalculateDistances() {
+  if (!state.userLocation) return;
+  state.items.forEach(function(item) {
+    // If item has lat/lng stored, use haversine
+    if (item.lat && item.lng) {
+      item.distance = haversineDistance(state.userLocation.lat, state.userLocation.lng, item.lat, item.lng);
+    }
+    // Otherwise distance stays as-is (random fallback or zip-based)
+  });
+}
+
+// ===== MAP =====
+function initMap() {
+  if (state.map) return; // Already initialized
+  var mapEl = document.getElementById('map');
+  if (!mapEl) return;
+  
+  // Default to US center if no location
+  var center = state.userLocation ? [state.userLocation.lat, state.userLocation.lng] : [39.8283, -98.5795];
+  var zoom = state.userLocation ? 13 : 4;
+  
+  state.map = L.map('map').setView(center, zoom);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(state.map);
+  
+  // Add user location marker
+  if (state.userLocation) {
+    L.circleMarker([state.userLocation.lat, state.userLocation.lng], {
+      radius: 8, fillColor: '#2d8a4e', color: '#fff', weight: 2, fillOpacity: 1
+    }).addTo(state.map).bindPopup('<strong>📍 You are here</strong>');
+  }
+}
+
+function renderMapMarkers() {
+  if (!state.map) return;
+  // Clear existing markers (except user location)
+  state.mapMarkers.forEach(function(m) { state.map.removeLayer(m); });
+  state.mapMarkers = [];
+  
+  var bounds = state.userLocation ? L.latLngBounds([[state.userLocation.lat, state.userLocation.lng]]) : L.latLngBounds();
+  
+  var filtered = getFilteredItems();
+  filtered.forEach(function(item) {
+    if (!item.lat || !item.lng) return; // Skip items without coordinates
+    var emoji = CATEGORY_EMOJI[item.category] || '📦';
+    var icon = L.divIcon({
+      html: '<div style="font-size:1.5rem;text-align:center;line-height:30px;width:30px;height:30px;background:white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);border:2px solid ' + (CATEGORY_COLORS[item.category] || '#999') + '">' + emoji + '</div>',
+      className: 'map-marker-icon',
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+    var marker = L.marker([item.lat, item.lng], { icon: icon })
+      .addTo(state.map)
+      .bindPopup(buildMapPopup(item));
+    state.mapMarkers.push(marker);
+    bounds.extend([item.lat, item.lng]);
+  });
+  
+  if (state.mapMarkers.length > 0) {
+    state.map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+  }
+}
+
+function buildMapPopup(item) {
+  var emoji = CATEGORY_EMOJI[item.category] || '📦';
+  var dist = item.distance ? item.distance.toFixed(1) + ' mi away' : '';
+  var safeId = escHtml(item.id);
+  return '<div class="map-popup">' +
+    '<h4>' + emoji + ' ' + escHtml(item.title) + '</h4>' +
+    '<p>' + escHtml(truncate(item.desc, 60)) + '</p>' +
+    '<p><strong>' + dist + '</strong> · ' + escHtml(item.condition) + '</p>' +
+    '<button class="btn btn-primary btn-sm" onclick="requestItem(\'' + safeId + '\')">I\'ll Take It</button>' +
+    '</div>';
+}
+
+function setView(view) {
+  state.currentView = view;
+  document.getElementById('viewListBtn').classList.toggle('active', view === 'list');
+  document.getElementById('viewMapBtn').classList.toggle('active', view === 'map');
+  document.getElementById('mapContainer').classList.toggle('active', view === 'map');
+  document.getElementById('browseList').style.display = view === 'list' ? '' : 'none';
+  
+  if (view === 'map') {
+    initMap();
+    // Need to wait for map to render after becoming visible
+    setTimeout(function() {
+      if (state.map) state.map.invalidateSize();
+      renderMapMarkers();
+    }, 100);
+  }
+}
+
+function updateRadiusLabel() {
+  var val = document.getElementById('radiusSlider').value;
+  state.radiusMiles = parseInt(val);
+  document.getElementById('radiusValue').textContent = val + ' mi';
+}
+
+// ===== FILTERING =====
+function getFilteredItems() {
+  var filter = document.getElementById('categoryFilter').value;
+  var search = document.getElementById('searchInput').value.toLowerCase().trim();
+  return state.items.filter(function(item) {
+    if (item.status !== 'available') return false;
+    if (filter !== 'all' && item.category !== filter) return false;
+    if (search && item.title.toLowerCase().indexOf(search) === -1 && item.desc.toLowerCase().indexOf(search) === -1) return false;
+    // Radius filter: only if we have user location AND item has real distance
+    if (state.userLocation && item.distance && item.distance > state.radiusMiles) return false;
+    return true;
+  });
+}
+
+function applyFilters() {
+  state.currentPage = 1; // Reset pagination on filter change
+  renderBrowse();
+  if (state.currentView === 'map' && state.map) {
+    renderMapMarkers();
+  }
+}
+
+// ===== SUPABASE INIT =====
+function initSupabase() {
+  SUPABASE_URL = localStorage.getItem('geogive_sb_url') || '';
+  SUPABASE_KEY = localStorage.getItem('geogive_sb_key') || '';
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      showConnIndicator(true);
+    } catch(e) { showConnIndicator(false); }
+  } else {
+    showConnIndicator(false);
+  }
+}
+
+function setupAuthListener() {
+  if (!supabase) return;
+  var { data: { subscription } } = supabase.auth.onAuthStateChanged(async function(event, session) {
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      state.session = session;
+      state.user = session.user;
+      await loadUserData();
+      updateAuthUI();
+      await loadItemsFromSupabase();
+      setupRealtimeSubscriptions();
+    } else if (event === 'SIGNED_OUT') {
+      state.session = null; state.user = null; state.userProfile = null;
+      // Clean up realtime subscriptions on sign out
+      if (state.itemsChannel) { try { supabase.removeChannel(state.itemsChannel); } catch(e) {} state.itemsChannel = null; }
+      if (state.requestsChannel) { try { supabase.removeChannel(state.requestsChannel); } catch(e) {} state.requestsChannel = null; }
+      updateAuthUI();
+    }
+  });
+  state.authListener = subscription;
+}
+
+// ===== REAL-TIME SUBSCRIPTIONS =====
+function setupRealtimeSubscriptions() {
+  if (!supabase) return;
+
+  // Subscribe to new items
+  state.itemsChannel = supabase
+    .channel('items-changes')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'items' }, function(payload) {
+      var newItem = normalizeItem(payload.new);
+      if (newItem.status === 'available') {
+        // Avoid duplicates
+        var exists = state.items.find(function(i) { return i.id === newItem.id; });
+        if (!exists) {
+          state.items.unshift(newItem);
+          recalculateDistances();
+          applyFilters();
+        }
+      }
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'items' }, function(payload) {
+      var updated = normalizeItem(payload.new);
+      var idx = state.items.findIndex(function(i) { return i.id === updated.id; });
+      if (idx !== -1) {
+        if (updated.status !== 'available') {
+          state.items.splice(idx, 1); // Remove if no longer available
+        } else {
+          state.items[idx] = updated;
+        }
+        recalculateDistances();
+        applyFilters();
+      }
+    })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'items' }, function(payload) {
+      state.items = state.items.filter(function(i) { return i.id !== payload.old.id; });
+      applyFilters();
+    })
+    .subscribe();
+
+  // Subscribe to new requests (for item owners)
+  if (state.user) {
+    state.requestsChannel = supabase
+      .channel('requests-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'requests', filter: 'owner_id=eq.' + state.user.id }, function(payload) {
+        var newReq = normalizeRequest(payload.new);
+        state.requests.unshift(newReq);
+        addNotif('New Request', '"' + newReq.itemTitle + '" was requested by ' + newReq.requesterName);
+        renderRequests();
+      })
+      .subscribe();
+  }
+}
+
+// Cleanup subscriptions on logout
+var origHandleLogout = handleLogout;
+handleLogout = async function() {
+  if (state.itemsChannel) { supabase.removeChannel(state.itemsChannel); state.itemsChannel = null; }
+  if (state.requestsChannel) { supabase.removeChannel(state.requestsChannel); state.requestsChannel = null; }
+  origHandleLogout();
+};
+
+async function checkSession() {
+  if (!supabase) return;
+  try {
+    var { data: { session } } = await supabase.auth.getSession();
+    if (session) { state.session = session; state.user = session.user; await loadUserData(); updateAuthUI(); }
+  } catch(e) {}
+}
+
+async function loadUserData() {
+  if (!state.user) return;
+  try {
+    var { data: profile } = await supabase.from('profiles').select('*').eq('id', state.user.id).single();
+    if (profile) { state.userProfile = profile; updateAuthUI(); }
+  } catch(e) {}
+}
+
+// ===== AUTH UI =====
+function updateAuthUI() {
+  var authButtons = document.getElementById('authButtons');
+  var userInfo = document.getElementById('userInfo');
+  if (state.user) {
+    authButtons.style.display = 'none'; userInfo.style.display = 'flex';
+    var name = (state.userProfile && state.userProfile.display_name) || state.user.email.split('@')[0];
+    document.getElementById('userNameDisplay').textContent = name;
+    var avatar = document.getElementById('userAvatarSmall');
+    if (state.userProfile && state.userProfile.avatar_url) {
+      avatar.innerHTML = '<img src="' + escHtml(state.userProfile.avatar_url) + '" alt="">';
+    } else {
+      avatar.textContent = name.charAt(0).toUpperCase();
+    }
+  } else {
+    authButtons.style.display = ''; userInfo.style.display = 'none';
+  }
+}
+
+function openAuthModal() {
+  document.getElementById('authModal').classList.add('active');
+  document.getElementById('authError').style.display = 'none';
+  document.getElementById('signinEmail').focus();
+}
+
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(function(t) { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).setAttribute('aria-selected', 'true');
+  document.querySelectorAll('.auth-form').forEach(function(f) { f.classList.remove('active'); });
+  document.getElementById(tab + 'Form').classList.add('active');
+  document.getElementById('authError').style.display = 'none';
+}
+
+async function handleGoogleAuth() {
+  if (!supabase) { showAuthError('Supabase not configured. Tap your name → Settings to add credentials.'); return; }
+  var btn = document.getElementById('googleBtn');
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;margin:0"></div> Connecting...';
+  btn.disabled = true;
+  try {
+    var { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
+    if (error) throw error;
+  } catch(e) { btn.innerHTML = '<span>🔵</span> Continue with Google'; btn.disabled = false; showAuthError(e.message); }
+}
+
+async function handleEmailAuth(e, type) {
+  e.preventDefault();
+  if (!supabase) { showAuthError('Supabase not configured.'); return; }
+  var btn = document.getElementById(type + 'SubmitBtn');
+  var orig = btn.textContent;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0 8px 0 0;display:inline-block;vertical-align:middle"></div>Please wait...';
+  btn.disabled = true;
+  try {
+    if (type === 'signin') {
+      var { error } = await supabase.auth.signInWithPassword({ email: document.getElementById('signinEmail').value.trim(), password: document.getElementById('signinPassword').value });
+      if (error) throw error;
+    } else {
+      var email = document.getElementById('signupEmail').value.trim();
+      var password = document.getElementById('signupPassword').value;
+      var name = document.getElementById('signupName').value.trim();
+      var zip = document.getElementById('signupZip').value.trim();
+      var { data: authData, error } = await supabase.auth.signUp({ email: email, password: password, options: { data: { display_name: name, zip: zip } } });
+      if (error) throw error;
+      if (authData.user) {
+        await supabase.from('profiles').upsert({ id: authData.user.id, display_name: name, zip: zip, email: email, updated_at: new Date().toISOString() });
+      }
+    }
+    closeModal('authModal');
+    showToast(type === 'signin' ? 'Welcome back! 🎉' : 'Account created! 🎉');
+  } catch(e) { btn.textContent = orig; btn.disabled = false; showAuthError(e.message); }
+}
+
+async function handleLogout() {
+  if (supabase) { try { await supabase.auth.signOut(); } catch(e) {} }
+  state.user = null; state.session = null; state.userProfile = null;
+  updateAuthUI(); showToast('Signed out.'); switchPage('browse');
+}
+
+function showAuthError(msg) { var el = document.getElementById('authError'); el.textContent = msg; el.style.display = 'block'; }
+
+// ===== SETTINGS =====
+function openSettingsModal() {
+  document.getElementById('settingsSbUrl').value = SUPABASE_URL;
+  document.getElementById('settingsSbKey').value = SUPABASE_KEY;
+  document.getElementById('settingsStatus').textContent = supabase ? '✅ Connected' : '⚠️ Not connected';
+  document.getElementById('settingsModal').classList.add('active');
+}
+
+function saveSettings() {
+  var url = document.getElementById('settingsSbUrl').value.trim();
+  var key = document.getElementById('settingsSbKey').value.trim();
+  if (!url || !key) { showToast('Please enter both URL and Key.'); return; }
+  try { var p = new URL(url); if (!p.hostname.endsWith('.supabase.co') && !p.hostname.endsWith('.supabase.in') && p.hostname !== 'localhost') { showToast('URL should be a Supabase project URL.'); return; } } catch(e) { showToast('Invalid URL format.'); return; }
+  localStorage.setItem('geogive_sb_url', url); localStorage.setItem('geogive_sb_key', key);
+  SUPABASE_URL = url; SUPABASE_KEY = key;
+  closeModal('settingsModal');
+  if (state.authListener) state.authListener.unsubscribe();
+  initSupabase(); setupAuthListener(); checkSession(); loadItemsFromSupabase();
+  showToast('Settings saved! Connecting...');
+}
+
+function clearSettings() {
+  localStorage.removeItem('geogive_sb_url'); localStorage.removeItem('geogive_sb_key');
+  var sb = supabase; // Save reference before nulling
+  SUPABASE_URL = ''; SUPABASE_KEY = ''; supabase = null;
+  if (state.authListener) state.authListener.unsubscribe(); state.authListener = null;
+  if (state.itemsChannel) { sb && sb.removeChannel(state.itemsChannel); state.itemsChannel = null; }
+  if (state.requestsChannel) { sb && sb.removeChannel(state.requestsChannel); state.requestsChannel = null; }
+  state.user = null; state.session = null; state.userProfile = null;
+  updateAuthUI(); closeModal('settingsModal'); loadItemsFromStorage(); showToast('Disconnected. Using local mode.');
+}
+
+// ===== DATA LAYER =====
+function normalizeItem(item) {
+  // Handle photos: can be from item_photos relation or legacy base64 array
+  var photos = [];
+  if (item.item_photos && Array.isArray(item.item_photos)) {
+    photos = item.item_photos.sort(function(a,b) { return (a.order||0)-(b.order||0); }).map(function(p) { return p.url; });
+  } else if (item.photos && Array.isArray(item.photos)) {
+    photos = item.photos; // Legacy base64 fallback
+  }
+  var createdAt = item.created_at ? new Date(item.created_at).getTime() : Date.now();
+  var expiresAt = item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000);
+  return {
+    id: item.id, title: item.title || '', desc: item.description || '',
+    category: item.category || 'other', condition: item.condition || 'Good',
+    location: item.zip || '', lat: item.lat || null, lng: item.lng || null,
+    ownerId: item.owner_id || '', ownerName: (item.profiles && item.profiles.display_name) || 'Anonymous',
+    distance: (typeof item.distance === 'number') ? item.distance : 0,
+    status: item.status || 'available',
+    createdAt: createdAt,
+    expiresAt: expiresAt,
+    photos: photos
+  };
+}
+
+function normalizeRequest(r) {
+  return {
+    id: r.id, itemId: r.item_id || '', requesterId: r.requester_id || '',
+    requesterName: r.requester_name || 'Someone', ownerId: r.owner_id || '',
+    ownerName: r.owner_name || 'Owner', itemTitle: r.item_title || 'Unknown Item',
+    status: r.status || 'pending', createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now()
+  };
+}
+
+function normalizeChat(c) {
+  return {
+    id: c.id, itemId: c.item_id || '', itemTitle: c.item_title || 'Chat',
+    participants: [c.participant_1 || '', c.participant_2 || ''],
+    messages: (c.messages || []).map(function(m) {
+      return { from: m.from || '', text: m.text || '', createdAt: m.created_at ? new Date(m.created_at).getTime() : (m.createdAt || Date.now()) };
+    })
+  };
+}
+
+async function loadItemsFromSupabase() {
+  if (!supabase) { loadItemsFromStorage(); return; }
+  showLoading(true);
+  try {
+    var query;
+    // Use PostGIS nearby search when we have user location
+    if (state.userLocation && state.userLocation.lat && state.userLocation.lng) {
+      var radiusMiles = state.radiusMiles || 10;
+      var { data, error } = await supabase.rpc('find_nearby_items', {
+        user_lat: state.userLocation.lat,
+        user_lng: state.userLocation.lng,
+        radius_miles: radiusMiles,
+        max_results: 200
+      });
+      if (error) throw error;
+      // Normalize RPC results (different shape than table select)
+      state.items = (data || []).map(function(item) {
+        return {
+          id: item.id, title: item.title || '', desc: item.description || '',
+          category: item.category || 'other', condition: item.condition || 'Good',
+          location: item.zip || '', lat: item.lat || null, lng: item.lng || null,
+          ownerId: item.owner_id || '', ownerName: 'Anonymous',
+          distance: item.distance_miles || 0,
+          status: item.status || 'available',
+          createdAt: item.created_at ? new Date(item.created_at).getTime() : Date.now(),
+          photos: []
+        };
+      });
+      // Load photos for these items
+      var itemIds = state.items.map(function(i) { return i.id; });
+      if (itemIds.length > 0) {
+        var { data: photoData } = await supabase.from('photos').select('item_id,url,order').in('item_id', itemIds);
+        if (photoData) {
+          state.items.forEach(function(item) {
+            item.photos = photoData.filter(function(p) { return p.item_id === item.id; })
+              .sort(function(a,b) { return (a.order||0)-(b.order||0); })
+              .map(function(p) { return p.url; });
+          });
+        }
+      }
+    } else {
+      // Fallback: load all available items (for when no location)
+      query = supabase.from('items').select('*, profiles:owner_id(display_name, avatar_url), item_photos:photos(url,order)').eq('status', 'available').order('created_at', { ascending: false }).limit(200);
+      var { data, error } = await query;
+      if (error) throw error;
+      state.items = (data || []).map(normalizeItem);
+      recalculateDistances();
+    }
+    localStorage.setItem('geogive_items_cache', JSON.stringify(state.items));
+  } catch(e) { console.warn('Supabase load failed:', e); loadItemsFromStorage(); showLoading(false); return; }
+  showLoading(false);
+  applyFilters();
+}
+
+function loadItemsFromStorage() {
+  try { var c = localStorage.getItem('geogive_items_cache'); state.items = c ? JSON.parse(c) : null; } catch(e) {}
+  if (!state.items || state.items.length === 0) seedData();
+  recalculateDistances();
+  applyFilters();
+}
+
+async function saveItemToSupabase(item) {
+  if (!supabase || !state.user) return saveItemToStorage(item);
+  try {
+    // Step 1: Insert item without photos
+    var { data, error } = await supabase.from('items').insert({
+      title: item.title, description: item.desc, category: item.category,
+      condition: item.condition, zip: item.location,
+      lat: item.lat || (state.userLocation ? state.userLocation.lat : null),
+      lng: item.lng || (state.userLocation ? state.userLocation.lng : null),
+      owner_id: state.user.id, status: 'available', created_at: new Date().toISOString()
+    }).select().single();
+    if (error) throw error;
+
+    var itemId = data.id;
+    item.id = itemId; item.ownerId = state.user.id;
+    item.ownerName = (state.userProfile && state.userProfile.display_name) || state.user.email.split('@')[0];
+    item.createdAt = new Date(data.created_at).getTime();
+    if (data.lat) item.lat = data.lat;
+    if (data.lng) item.lng = data.lng;
+
+    // Step 2: Upload photos to Supabase Storage
+    var photoUrls = [];
+    for (var i = 0; i < item.photos.length; i++) {
+      var dataUrl = item.photos[i];
+      // Skip if not a data URL (legacy) or already uploaded
+      if (dataUrl.indexOf('data:') !== 0) { photoUrls.push(dataUrl); continue; }
+      try {
+        // Convert base64 to blob
+        var parts = dataUrl.split(',');
+        var mime = parts[0].match(/:(.*?);/);
+        mime = mime ? mime[1] : 'image/jpeg';
+        var bstr = atob(parts[1]);
+        var u8arr = new Uint8Array(bstr.length);
+        for (var j = 0; j < bstr.length; j++) u8arr[j] = bstr.charCodeAt(j);
+        var blob = new Blob([u8arr], { type: mime });
+        // Upload to storage
+        var fileName = itemId + '/' + i + '.' + mime.split('/')[1];
+        var { error: uploadErr } = await supabase.storage.from('item-photos').upload(fileName, blob, { upsert: true });
+        if (uploadErr) throw uploadErr;
+        // Get public URL
+        var { data: urlData } = supabase.storage.from('item-photos').getPublicUrl(fileName);
+        photoUrls.push(urlData.publicUrl);
+      } catch(photoErr) {
+        console.warn('Photo upload failed, keeping base64:', photoErr);
+        photoUrls.push(dataUrl); // Fallback to base64
+      }
+    }
+
+    // Step 3: Insert photo records
+    if (photoUrls.length > 0) {
+      var photoRecords = photoUrls.map(function(url, idx) { return { item_id: itemId, url: url, order: idx }; });
+      await supabase.from('photos').insert(photoRecords);
+    }
+    item.photos = photoUrls;
+  } catch(e) { console.warn('Supabase save failed:', e); saveItemToStorage(item); }
+}
+
+function saveItemToStorage(item) {
+  item.id = item.id || ('item_' + Date.now());
+  item.ownerId = 'local_' + Math.random().toString(36).substr(2, 6);
+  item.ownerName = 'You'; item.createdAt = item.createdAt || Date.now();
+  if (state.userLocation && !item.lat) { item.lat = state.userLocation.lat; item.lng = state.userLocation.lng; }
+  state.items.unshift(item);
+  localStorage.setItem('geogive_items_cache', JSON.stringify(state.items));
+}
+
+async function deleteItemFromSupabase(itemId) {
+  if (!supabase) { deleteItemFromStorage(itemId); return; }
+  try { var { error } = await supabase.from('items').delete().eq('id', itemId); if (error) throw error; deleteItemFromStorage(itemId); } catch(e) { showToast('Failed to delete on server. Removed locally.'); deleteItemFromStorage(itemId); }
+}
+
+function deleteItemFromStorage(itemId) { state.items = state.items.filter(function(i) { return i.id !== itemId; }); localStorage.setItem('geogive_items_cache', JSON.stringify(state.items)); }
+
+async function updateItemStatus(itemId, status) {
+  if (!supabase) { updateItemStatusLocal(itemId, status); return; }
+  var item = findItem(itemId); var prev = item ? item.status : null;
+  updateItemStatusLocal(itemId, status);
+  try { var { error } = await supabase.from('items').update({ status: status }).eq('id', itemId); if (error) throw error; } catch(e) { if (prev !== null) updateItemStatusLocal(itemId, prev); showToast('Failed to update. Changes reverted.'); }
+}
+
+function updateItemStatusLocal(itemId, status) { var item = findItem(itemId); if (item) item.status = status; localStorage.setItem('geogive_items_cache', JSON.stringify(state.items)); }
+
+// ===== REQUESTS & CHATS =====
+async function createRequest(item) {
+  if (!state.user) { openAuthModal(); showToast('Please sign in to request items.'); return; }
+  if (!supabase) return createRequestLocal(item);
+  try {
+    var { data: reqData, error } = await supabase.from('requests').insert({
+      item_id: item.id, requester_id: state.user.id, owner_id: item.ownerId,
+      item_title: item.title, requester_name: (state.userProfile && state.userProfile.display_name) || state.user.email.split('@')[0],
+      owner_name: item.ownerName, status: 'pending', created_at: new Date().toISOString()
+    }).select().single();
+    if (error) throw error;
+    var chatId = buildChatId(item.ownerId, state.user.id, item.id);
+    try {
+      await supabase.from('chats').insert({ id: chatId, request_id: reqData.id, item_id: item.id, item_title: item.title, participant_1: item.ownerId, participant_2: state.user.id, messages: [{ from: 'system', text: 'Request sent for "' + item.title + '"', createdAt: Date.now() }], created_at: new Date().toISOString() });
+    } catch(chatError) { console.warn('Chat creation failed:', chatError); }
+    state.requests.push(normalizeRequest(reqData));
+    state.chats[chatId] = { id: chatId, itemId: item.id, itemTitle: item.title, participants: [item.ownerId, state.user.id], messages: [{ from: 'system', text: 'Request sent for "' + item.title + '"', createdAt: Date.now() }] };
+    saveChatsToStorage();
+    showToast('Request sent! Check the Requests tab.');
+    addNotif('Request Sent', 'You requested "' + item.title + '". The giver will be notified.');
+    switchPage('requests');
+  } catch(e) { createRequestLocal(item); }
+}
+
+function createRequestLocal(item) {
+  if (!state.user) { openAuthModal(); return; }
+  var existing = state.requests.filter(function(r) { return r.itemId === item.id && r.requesterId === state.user.id; });
+  if (existing.length > 0) { showToast('You already requested this item!'); return; }
+  var request = { id: 'req_' + Date.now(), itemId: item.id, requesterId: state.user.id, requesterName: 'You', ownerId: item.ownerId, ownerName: item.ownerName, itemTitle: item.title, status: 'pending', createdAt: Date.now() };
+  state.requests.push(request);
+  var chatId = buildChatId(item.ownerId, state.user.id, item.id);
+  if (!state.chats[chatId]) { state.chats[chatId] = { id: chatId, itemId: item.id, itemTitle: item.title, participants: [item.ownerId, state.user.id], messages: [{ from: item.ownerId, text: 'Hi! I saw you requested my ' + item.title + '. When would be a good time for pickup?', createdAt: Date.now() }] }; }
+  saveChatsToStorage();
+  showToast('Request sent! Check the Requests tab.');
+  addNotif('Request Sent', 'You requested "' + item.title + '". The giver will be notified.');
+  switchPage('browse');
+}
+
+function buildChatId(user1, user2, itemId) { var s = [user1, user2].sort(); return s[0] + '_' + s[1] + '_' + itemId; }
+
+async function loadRequestsFromSupabase() {
+  if (!supabase || !state.user) return loadRequestsFromStorage();
+  try {
+    var { data, error } = await supabase.from('requests').select('*').or('requester_id.eq.' + state.user.id + ',owner_id.eq.' + state.user.id).order('created_at', { ascending: false });
+    if (error) throw error;
+    state.requests = (data || []).map(normalizeRequest);
+    await loadChatsFromSupabase();
+  } catch(e) { loadRequestsFromStorage(); }
+}
+
+async function loadChatsFromSupabase() {
+  if (!supabase || !state.user) return;
+  try {
+    var { data, error } = await supabase.from('chats').select('*').or('participant_1.eq.' + state.user.id + ',participant_2.eq.' + state.user.id);
+    if (error) throw error;
+    (data || []).forEach(function(c) {
+      var chat = normalizeChat(c);
+      var existing = state.chats[chat.id];
+      if (existing && existing.messages && existing.messages.length > chat.messages.length) chat.messages = existing.messages;
+      state.chats[chat.id] = chat;
+    });
+    saveChatsToStorage();
+  } catch(e) {}
+}
+
+function loadRequestsFromStorage() { try { var c = localStorage.getItem('geogive_requests_cache'); if (c) state.requests = JSON.parse(c); } catch(e) {} }
+function saveChatsToStorage() { try { localStorage.setItem('geogive_chats_cache', JSON.stringify(state.chats)); } catch(e) {} }
+
+function seedData() {
+  var now = Date.now();
+  state.items = [
+    { id: 'seed1', title: 'Vintage Denim Jacket', desc: 'Classic 90s denim jacket, size M.', category: 'clothing', condition: 'Good', location: '90210', ownerId: 'sarah_k', ownerName: 'Sarah K.', distance: 1.2, status: 'available', createdAt: now - 3600000, expiresAt: now + 29 * 24 * 60 * 60 * 1000, photos: [], lat: 34.0901, lng: -118.4065 },
+    { id: 'seed2', title: 'IKEA KALLAX Shelf Unit', desc: '4x4 cube storage unit in white.', category: 'furniture', condition: 'Good', location: '90215', ownerId: 'mike_r', ownerName: 'Mike R.', distance: 2.8, status: 'available', createdAt: now - 7200000, expiresAt: now + 28 * 24 * 60 * 60 * 1000, photos: [], lat: 34.0689, lng: -118.4452 },
+    { id: 'seed3', title: 'Nintendo Switch + 3 Games', desc: 'Neon red/blue Switch with Mario Kart, Zelda.', category: 'electronics', condition: 'Like New', location: '90208', ownerId: 'alex_t', ownerName: 'Alex T.', distance: 0.5, status: 'available', createdAt: now - 1800000, expiresAt: now + 5 * 24 * 60 * 60 * 1000, photos: [], lat: 34.0522, lng: -118.2437 },
+    { id: 'seed4', title: 'Cookbook Collection (12 books)', desc: 'Assorted cookbooks — Julia Child, Salt Fat Acid Heat.', category: 'books', condition: 'Fair', location: '90212', ownerId: 'jenny_l', ownerName: 'Jenny L.', distance: 3.1, status: 'available', createdAt: now - 5400000, expiresAt: now + 27 * 24 * 60 * 60 * 1000, photos: [], lat: 34.0736, lng: -118.4005 },
+    { id: 'seed5', title: 'Yoga Mat + Blocks', desc: 'Barely used yoga mat with 2 foam blocks.', category: 'sports', condition: 'Like New', location: '90211', ownerId: 'expired_user', ownerName: 'Old Seller', distance: 1.5, status: 'available', createdAt: now - 31 * 24 * 60 * 60 * 1000, expiresAt: now - 1 * 24 * 60 * 60 * 1000, photos: [], lat: 34.0622, lng: -118.3056 }
+  ];
+  localStorage.setItem('geogive_items_cache', JSON.stringify(state.items));
+}
+
+// ===== NAVIGATION =====
+function switchPage(page) {
+  if ((page === 'list' || page === 'mylistings' || page === 'requests') && !state.user) { openAuthModal(); showToast('Please sign in first.'); return; }
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var t = document.getElementById('page-' + page); if (t) t.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(function(tab) { tab.classList.remove('active'); tab.setAttribute('aria-selected', 'false'); });
+  var at = document.getElementById('tab-' + page); if (at) { at.classList.add('active'); at.setAttribute('aria-selected', 'true'); }
+  if (page === 'browse') applyFilters();
+  if (page === 'mylistings') renderMyListings();
+  if (page === 'requests') { loadRequestsFromSupabase().then(function() { renderRequests(); }); }
+}
+
+// ===== BROWSE =====
+// ===== INFINITE SCROLL =====
+state.pageSize = 20;
+state.currentPage = 1;
+state.isLoadingMore = false;
+
+function renderBrowse() {
+  var container = document.getElementById('browseList');
+  var items = getFilteredItems();
+  if (state.userLocation) { items.sort(function(a, b) { return (a.distance || 999) - (b.distance || 999); }); }
+
+  // First page or "load more"
+  if (state.currentPage === 1) {
+    if (items.length === 0) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>No items found nearby. Try increasing the radius or listing something!</p></div>'; return; }
+    var html = '';
+    var pageItems = items.slice(0, state.pageSize);
+    pageItems.forEach(function(item) { html += buildItemCard(item); });
+    if (items.length > state.pageSize) {
+      html += '<div id="loadMoreTrigger" style="height:1px"></div>';
+    }
+    container.innerHTML = html;
+    setupInfiniteScroll();
+  } else {
+    // Append more items
+    var start = (state.currentPage - 1) * state.pageSize;
+    var end = start + state.pageSize;
+    var pageItems = items.slice(start, end);
+    var html = '';
+    pageItems.forEach(function(item) { html += buildItemCard(item); });
+    // Remove old trigger
+    var oldTrigger = document.getElementById('loadMoreTrigger');
+    if (oldTrigger) oldTrigger.remove();
+    // Append
+    var temp = document.createElement('div');
+    temp.innerHTML = html;
+    while (temp.firstChild) {
+      container.appendChild(temp.firstChild);
+    }
+    if (end < items.length) {
+      var trigger = document.createElement('div');
+      trigger.id = 'loadMoreTrigger';
+      trigger.style.height = '1px';
+      container.appendChild(trigger);
+      setupInfiniteScroll();
+    }
+  }
+  state.isLoadingMore = false;
+}
+
+function setupInfiniteScroll() {
+  // Disconnect previous observer to prevent leaks
+  if (state.scrollObserver) { state.scrollObserver.disconnect(); state.scrollObserver = null; }
+  var trigger = document.getElementById('loadMoreTrigger');
+  if (!trigger || !('IntersectionObserver' in window)) return;
+  var observer = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting && !state.isLoadingMore) {
+      state.isLoadingMore = true;
+      state.currentPage++;
+      renderBrowse();
+    }
+  }, { rootMargin: '200px' });
+  observer.observe(trigger);
+  state.scrollObserver = observer;
+}
+
+function debounceSearch() { if (state.searchTimer) clearTimeout(state.searchTimer); state.searchTimer = setTimeout(function() { applyFilters(); }, 300); }
+
+// ===== ITEM EXPIRATION =====
+function isItemExpired(item) {
+  var createdAt = item.createdAt || (item.created_at ? new Date(item.created_at).getTime() : Date.now());
+  var expiresAt = item.expiresAt || (item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000));
+  return Date.now() > expiresAt;
+}
+
+function isExpiringSoon(item) {
+  if (isItemExpired(item)) return false;
+  var createdAt = item.createdAt || (item.created_at ? new Date(item.created_at).getTime() : Date.now());
+  var expiresAt = item.expiresAt || (item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000));
+  var daysLeft = (expiresAt - Date.now()) / (24 * 60 * 60 * 1000);
+  return daysLeft <= 3;
+}
+
+function daysUntilExpiry(item) {
+  var createdAt = item.createdAt || (item.created_at ? new Date(item.created_at).getTime() : Date.now());
+  var expiresAt = item.expiresAt || (item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000));
+  return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
+}
+
+function renewItem(itemId) {
+  var item = findItem(itemId);
+  if (!item) return;
+  // Reset expiration: set expiresAt to now + 30 days
+  item.expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
+  // Persist to Supabase if online
+  if (supabase && state.user) {
+    supabase.from('items').update({ expires_at: new Date(item.expiresAt).toISOString() }).eq('id', itemId).then(function() {});
+  }
+  // Update localStorage
+  try {
+    var stored = JSON.parse(localStorage.getItem('geogive_items') || '[]');
+    stored = stored.map(function(i) { if (i.id === itemId) i.expires_at = new Date(item.expiresAt).toISOString(); return i; });
+    localStorage.setItem('geogive_items', JSON.stringify(stored));
+  } catch(e) {}
+  showToast('Item renewed for 30 days! 🔄');
+  applyFilters();
+}
+
+function toggleShowExpired() {
+  var cb = document.getElementById('showExpiredToggle');
+  if (cb) {
+    localStorage.setItem('geogive_show_expired', cb.checked ? 'true' : 'false');
+    applyFilters();
+  }
+}
+
+function buildItemCard(item) {
+  var emoji = CATEGORY_EMOJI[item.category] || '📦';
+  var bg = CATEGORY_COLORS[item.category] || '#f5f5f5';
+  var isOwn = state.user && item.ownerId === state.user.id;
+  var hasPhotos = item.photos && item.photos.length > 0;
+  var distDisplay = item.distance ? item.distance.toFixed(1) + ' mi' : (item.location ? item.location : '');
+  var expired = isItemExpired(item);
+  var expiringSoon = isExpiringSoon(item);
+  var cardClass = 'item-card' + (expired ? ' expired' : '');
+  var card = '<article class="' + cardClass + '" tabindex="0" onclick="openItemDetail(\'' + item.id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openItemDetail(\'' + item.id + '\')}" aria-label="' + item.title + ', ' + item.condition + '">';
+  if (hasPhotos) { card += '<div class="item-image"><img src="' + item.photos[0] + '" alt="' + escHtml(item.title) + '" loading="lazy"></div>'; }
+  else { card += '<div class="item-image" style="background:' + bg + '" aria-hidden="true">' + getCategoryIconHtml(item.category, 48) + '</div>'; }
+  card += '<div class="item-info">';
+  card += '<div class="item-title">' + escHtml(item.title) + '</div>';
+  card += '<div class="item-meta">';
+  card += '<span class="badge badge-category">' + getCategoryIconHtml(item.category, 16) + ' ' + (CATEGORY_DISPLAY[item.category] || (item.category || 'other')) + '</span>';
+  card += '<span class="badge badge-condition">' + item.condition + '</span>';
+  if (distDisplay) card += '<span class="badge badge-distance">📍 ' + distDisplay + '</span>';
+  if (expired) card += '<span class="badge badge-expired">⏰ Expired</span>';
+  else if (expiringSoon) card += '<span class="badge badge-expiring">⏰ ' + daysUntilExpiry(item) + 'd left</span>';
+  card += '</div>';
+  card += '<div class="item-desc">' + escHtml(truncate(item.desc, 80)) + '</div>';
+  // Show owner profile
+  card += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:0.8rem;color:var(--gray-700)">';
+  card += '<div class="profile-avatar">' + escHtml((item.ownerName || 'A').charAt(0).toUpperCase()) + '</div>';
+  card += '<span>' + escHtml(item.ownerName || 'Anonymous') + '</span>';
+  card += '</div>';
+  if (!isOwn && item.status === 'available' && !expired) { card += '<div class="item-actions"><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();requestItem(\'' + item.id + '\')">I\'ll Take It</button></div>'; }
+  else if (expired && isOwn) { card += '<div class="item-actions"><button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();renewItem(\'' + item.id + '\')">🔄 Renew</button></div>'; }
+  else if (isOwn) { card += '<div class="item-actions"><span class="badge status-available">Your listing</span></div>'; }
+  else if (expired) { card += '<div class="item-actions"><span class="badge badge-expired">Expired</span></div>'; }
+  card += '</div></article>';
+  return card;
+}
+
+// ===== ITEM DETAIL =====
+function openItemDetail(itemId) {
+  var item = findItem(itemId); if (!item) return;
+  var emoji = CATEGORY_EMOJI[item.category] || '📦';
+  var bg = CATEGORY_COLORS[item.category] || '#f5f5f5';
+  var isOwn = state.user && item.ownerId === state.user.id;
+  var expired = isItemExpired(item);
+  var expiringSoon = isExpiringSoon(item);
+  document.getElementById('modalTitle').textContent = item.title;
+  var body = '';
+  if (item.photos && item.photos.length > 0) { body += '<div class="item-image" style="height:180px;border-radius:8px;margin-bottom:16px;overflow:hidden"><img src="' + item.photos[0] + '" style="width:100%;height:100%;object-fit:cover" alt="' + escHtml(item.title) + '"></div>'; }
+  else { body += '<div class="item-image" style="background:' + bg + ';height:180px;border-radius:8px;margin-bottom:16px;display:flex;align-items:center;justify-content:center" aria-hidden="true">' + getCategoryIconHtml(item.category, 80) + '</div>'; }
+  body += '<div class="item-meta" style="margin-bottom:12px">';
+  body += '<span class="badge badge-category">' + getCategoryIconHtml(item.category, 16) + ' ' + (CATEGORY_DISPLAY[item.category] || (item.category || 'other')) + '</span> ';
+  body += '<span class="badge badge-condition">' + item.condition + '</span> ';
+  if (expired) body += '<span class="badge badge-expired">⏰ Expired</span> ';
+  else if (expiringSoon) body += '<span class="badge badge-expiring">⏰ Expires in ' + daysUntilExpiry(item) + ' days</span> ';
+  if (item.distance) body += '<span class="badge badge-distance">📍 ' + item.distance.toFixed(1) + ' mi away</span>';
+  body += '</div>';
+  body += '<p style="margin-bottom:12px;line-height:1.5">' + escHtml(item.desc || 'No description provided.') + '</p>';
+  body += '<p style="font-size:0.85rem;color:#666;margin-bottom:16px">Listed by <strong><a href="#" onclick="event.stopPropagation();showUserProfile(\'' + escHtml(item.ownerId) + '\')" style="color:var(--green);text-decoration:none">' + escHtml(item.ownerName || 'Anonymous') + '</a></strong> · ' + timeAgo(item.createdAt) + '</p>';
+  if (!isOwn && item.status === 'available' && !expired) { body += '<button class="btn btn-primary" style="width:100%;padding:12px;font-size:1rem" onclick="closeModal(\'itemModal\');requestItem(\'' + item.id + '\')">🎁 I\'ll Take It</button>'; }
+  else if (expired && isOwn) { body += '<button class="btn btn-secondary" style="width:100%;padding:12px;font-size:1rem" onclick="renewItem(\'' + item.id + '\');closeModal(\'itemModal\');">🔄 Renew Item</button>'; body += '<p style="font-size:0.85rem;color:var(--gray-400);margin-top:8px;text-align:center">Expired items are hidden from browse. Renew to relist.</p>'; }
+  else if (isOwn) { body += '<p style="color:var(--green);font-weight:600">This is your listing</p>'; }
+  else if (expired) { body += '<p style="color:#b71c1c;font-weight:600">⏰ This item has expired</p>'; }
+  document.getElementById('modalBody').innerHTML = body;
+  lastFocusedElement = document.activeElement;
+  document.getElementById('itemModal').classList.add('active');
+  setTimeout(function() {
+    var closeBtn = document.querySelector('#itemModal .modal-close');
+    if (closeBtn) closeBtn.focus();
+  }, 300);
+}
+
+function requestItem(itemId) { var item = findItem(itemId); if (item) createRequest(item); }
+
+// ===== MY LISTINGS =====
+function renderMyListings() {
+  var container = document.getElementById('myListingsList');
+  if (!state.user) { container.innerHTML = ''; return; }
+  var myItems = state.items.filter(function(i) { return i.ownerId === state.user.id; });
+  if (myItems.length === 0) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>You haven\'t listed any items yet.</p></div>'; return; }
+  var html = '';
+  myItems.forEach(function(item) {
+    var emoji = CATEGORY_EMOJI[item.category] || '📦'; var bg = CATEGORY_COLORS[item.category] || '#f5f5f5';
+    var hasPhotos = item.photos && item.photos.length > 0;
+    html += '<div class="item-card" style="display:flex;overflow:hidden">';
+    if (hasPhotos) html += '<div style="width:100px;min-height:100px;flex-shrink:0"><img src="' + item.photos[0] + '" style="width:100%;height:100%;object-fit:cover" alt=""></div>';
+    else html += '<div style="width:100px;min-height:100px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0" aria-hidden="true">' + emoji + '</div>';
+    html += '<div class="item-info" style="flex:1;min-width:0">';
+    html += '<div class="item-title">' + escHtml(item.title) + '</div>';
+    html += '<div class="item-meta" style="margin-bottom:6px"><span class="badge status-' + item.status + '">' + item.status + '</span></div>';
+    html += '<div class="item-actions">';
+    if (item.status === 'available') html += '<button class="btn btn-secondary btn-sm" onclick="markGiven(\'' + item.id + '\')">✅ Mark Given</button>';
+    html += '<button class="btn btn-danger btn-sm" onclick="deleteItem(\'' + item.id + '\')">🗑️ Delete</button>';
+    html += '<button class="btn btn-pro btn-sm" title="Pro feature">🚀 Boost (Pro)</button>';
+    html += '</div></div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function markGiven(itemId) { updateItemStatus(itemId, 'given'); renderMyListings(); showToast('Marked as given away! 🎉'); var item = findItem(itemId); if (item && !item.rated) { setTimeout(function() { showRatingPrompt(itemId, item.ownerId); }, 500); } }
+async function deleteItem(itemId) {
+  await deleteItemFromSupabase(itemId);
+  renderMyListings(); showToast('Item deleted.');
+}
+
+// ===== REQUESTS =====
+function renderRequests() {
+  var container = document.getElementById('requestsList');
+  if (!state.user) { container.innerHTML = ''; return; }
+  var myReqs = state.requests.filter(function(r) { return r.requesterId === state.user.id || r.ownerId === state.user.id; });
+  if (myReqs.length === 0) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><p>No requests yet.</p></div>'; return; }
+  var html = '';
+  myReqs.forEach(function(req) {
+    var isReq = req.requesterId === state.user.id;
+    var chatId = buildChatId(req.ownerId, req.requesterId, req.itemId);
+    html += '<div class="request-card"><div class="request-card-header"><span class="request-card-title">' + escHtml(req.itemTitle) + '</span><span class="request-card-time">' + timeAgo(req.createdAt) + '</span></div>';
+    html += '<div class="request-card-item">';
+    if (isReq) html += 'Requested from <strong>' + escHtml(req.ownerName) + '</strong>';
+    else html += '<strong>You</strong> received a request from <strong>' + escHtml(req.requesterName) + '</strong>';
+    html += ' · <span class="badge status-' + req.status + '">' + req.status + '</span></div>';
+    // Accept/Reject buttons for owner
+    if (!isReq && req.status === 'pending') {
+      html += '<div style="display:flex;gap:8px;margin-top:8px">';
+      html += '<button class="btn btn-primary btn-sm" onclick="respondToRequest(\'' + req.id + '\',\'accepted\')">✓ Accept</button>';
+      html += '<button class="btn btn-secondary btn-sm" onclick="respondToRequest(\'' + req.id + '\',\'rejected\')">✕ Reject</button>';
+      html += '</div>';
+    }
+    html += '<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="openChat(\'' + chatId + '\',\'' + escHtml(req.itemTitle) + '\')">💬 Open Chat</button></div>';
+  });
+  container.innerHTML = html;
+}
+
+function respondToRequest(reqId, action) {
+  var req = state.requests.find(function(r) { return r.id === reqId; });
+  if (!req) return;
+  if (req.status !== 'pending') { showToast('This request has already been ' + req.status); return; }
+  req.status = action;
+  // Notify requester
+  var msg = action === 'accepted' ? 'Your request for "' + req.itemTitle + '" was accepted! 🎉' : 'Your request for "' + req.itemTitle + '" was declined.';
+  addNotif('Request ' + (action === 'accepted' ? 'Accepted' : 'Declined'), msg);
+  // Update Supabase
+  if (supabase) {
+    supabase.from('requests').update({ status: action, updated_at: new Date().toISOString() }).eq('id', reqId).then(function() {});
+  }
+  // Add system message to chat
+  var chatId = buildChatId(req.ownerId, req.requesterId, req.itemId);
+  var chat = state.chats[chatId];
+  if (chat) {
+    chat.messages.push({ from: 'system', text: action === 'accepted' ? 'Request accepted! Arrange a pickup time.' : 'Request declined.', createdAt: Date.now() });
+    saveChatsToStorage();
+  }
+  showToast(action === 'accepted' ? 'Request accepted! ✓' : 'Request declined.');
+  renderRequests();
+}
+
+// ===== CHAT =====
+function openChat(chatId, itemTitle) {
+  state.currentChatId = chatId;
+  document.getElementById('chatPageTitle').textContent = '💬 ' + itemTitle;
+  document.getElementById('page-chat').classList.add('active');
+  renderChatPageMessages();
+  setTimeout(function() { var el = document.getElementById('chatPageInput'); if (el) el.focus(); }, 100);
+}
+
+function closeChatPage() {
+  document.getElementById('page-chat').classList.remove('active');
+  state.currentChatId = null; // Prevent auto-replies from firing on closed chat
+}
+
+function renderChatPageMessages() {
+  var container = document.getElementById('chatPageMessages');
+  var chat = state.chats[state.currentChatId];
+  if (!chat) { container.innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:20px">No messages yet.</div>'; return; }
+  var html = '';
+  chat.messages.forEach(function(msg) { var isSent = state.user && msg.from === state.user.id; html += '<div class="chat-msg ' + (isSent ? 'sent' : 'received') + '">' + escHtml(msg.text) + '</div>'; });
+  container.innerHTML = html;
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderChatMessages() {
+  var container = document.getElementById('chatMessages');
+  var chat = state.chats[state.currentChatId];
+  if (!chat) { container.innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:20px">No messages yet.</div>'; return; }
+  var html = '';
+  chat.messages.forEach(function(msg) { var isSent = state.user && msg.from === state.user.id; html += '<div class="chat-msg ' + (isSent ? 'sent' : 'received') + '">' + escHtml(msg.text) + '</div>'; });
+  container.innerHTML = html; container.scrollTop = container.scrollHeight;
+}
+
+function sendChatMsg() {
+  var input = document.getElementById('chatPageInput'); var text = input.value.trim();
+  if (!text || !state.currentChatId || !state.user) return;
+  var chat = state.chats[state.currentChatId]; if (!chat) return;
+  chat.messages.push({ from: state.user.id, text: text, createdAt: Date.now() }); input.value = ''; renderChatPageMessages(); saveChatsToStorage();
+  var otherId = chat.participants.find(function(p) { return p !== state.user.id; });
+  setTrackedTimeout(function() {
+    var replies = ['Sure, that works!', 'When would be a good time?', 'I can meet tomorrow afternoon.', 'Sounds great! 😊'];
+    var reply = replies[Math.floor(Math.random() * replies.length)];
+    var c = state.chats[state.currentChatId];
+    if (c) { c.messages.push({ from: otherId, text: reply, createdAt: Date.now() }); saveChatsToStorage();
+    addNotif('New Reply', reply); renderChatPageMessages(); }
+  }, 1500 + Math.random() * 2000);
+}
+
+// ===== IMAGE UPLOAD =====
+function handleImageSelect(e) {
+  var files = e.target.files; if (!files || !files.length) return;
+  var remaining = MAX_IMAGES - state.selectedImages.length;
+  if (remaining <= 0) { showImageError('Maximum ' + MAX_IMAGES + ' photos.'); return; }
+  var toProcess = Math.min(files.length, remaining);
+  var processed = 0;
+  for (var i = 0; i < toProcess; i++) {
+    var file = files[i];
+    if (file.size > MAX_IMAGE_SIZE * 5) { showImageError('"' + file.name + '" is too large (max 10MB raw).'); continue; }
+    compressAndAddImage(file, remaining - processed);
+    processed++;
+  }
+  if (processed > 0) {
+    var ind = document.getElementById('compressIndicator');
+    if (ind) ind.classList.add('active');
+  }
+  e.target.value = '';
+}
+
+// Compress image using Canvas API
+// Track in-flight compressions for indicator
+var compressingCount = 0;
+
+function doneCompressing() {
+  compressingCount--;
+  if (compressingCount <= 0) {
+    compressingCount = 0;
+    var ind = document.getElementById('compressIndicator');
+    if (ind) { setTrackedTimeout(function() { ind.classList.remove('active'); }, 800); }
+  }
+}
+
+function compressAndAddImage(file, slotsRemaining) {
+  if (slotsRemaining <= 0) return;
+  compressingCount++;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var img = new Image();
+    img.onload = function() {
+      try {
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        var maxW = 1200, maxH = 1200;
+        var w = img.width, h = img.height;
+        if (w > maxW || h > maxH) {
+          var ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        canvas.width = w; canvas.height = h;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        var compressed = canvas.toDataURL('image/jpeg', 0.7);
+        state.selectedImages.push(compressed);
+        renderImagePreviews();
+      } catch(err) {
+        state.selectedImages.push(ev.target.result);
+        renderImagePreviews();
+      }
+      doneCompressing();
+    };
+    img.onerror = function() {
+      state.selectedImages.push(ev.target.result);
+      renderImagePreviews();
+      doneCompressing();
+    };
+    img.src = ev.target.result;
+  };
+  reader.onerror = function() {
+    doneCompressing();
+  };
+  reader.readAsDataURL(file);
+}
+
+function showImageError(msg) { var el = document.getElementById('imageError'); el.textContent = msg; el.style.display = 'block'; setTrackedTimeout(function() { el.style.display = 'none'; }, 4000); }
+
+function getTotalImageSize() {
+  return state.selectedImages.reduce(function(s, img) { return s + img.length; }, 0);
+}
+
+function renderImagePreviews() {
+  var grid = document.getElementById('imagePreviewGrid'); var html = '';
+  state.selectedImages.forEach(function(dataUrl, idx) {
+    html += '<div class="image-preview"><img src="' + dataUrl + '" alt="Photo ' + (idx + 1) + '"><button class="remove-btn" onclick="removeImage(' + idx + ')" aria-label="Remove photo ' + (idx + 1) + '">✕</button></div>';
+  });
+  grid.innerHTML = html;
+}
+
+function removeImage(idx) { state.selectedImages.splice(idx, 1); renderImagePreviews(); }
+
+// ===== FORM =====
+async function handleListSubmit(e) {
+  e.preventDefault();
+  if (!state.user) { openAuthModal(); showToast('Please sign in to list items.'); return; }
+  var item = {
+    title: document.getElementById('itemName').value.trim(), desc: document.getElementById('itemDesc').value.trim(),
+    category: document.getElementById('itemCategory').value, condition: document.getElementById('itemCondition').value,
+    location: document.getElementById('itemLocation').value.trim(),
+    lat: state.userLocation ? state.userLocation.lat : null, lng: state.userLocation ? state.userLocation.lng : null,
+    photos: state.selectedImages.slice(0, MAX_IMAGES), distance: 0, status: 'available', createdAt: Date.now()
+  };
+  // Check if offline — queue instead of submitting
+  if (handleOfflineSubmit(item)) {
+    state.selectedImages = []; renderImagePreviews(); document.getElementById('listForm').reset();
+    switchPage('browse');
+    return;
+  }
+  showLoading(true); await saveItemToSupabase(item); showLoading(false);
+  state.selectedImages = []; renderImagePreviews(); document.getElementById('listForm').reset();
+  showToast('Item listed! 🎉'); switchPage('browse');
+}
+
+// ===== MODALS =====
+function closeModal(id) { document.getElementById(id).classList.remove('active'); if (lastFocusedElement && lastFocusedElement.focus) { setTimeout(function() { lastFocusedElement.focus(); }, 100); } }
+document.querySelectorAll('.modal-overlay, .bottom-sheet-overlay').forEach(function(o) { o.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); }); o.addEventListener('keydown', function(e) { if (e.key === 'Escape') this.classList.remove('active'); }); });
+
+// ===== CONNECTION =====
+function showConnIndicator(connected) { var el = document.getElementById('connIndicator'); el.style.display = 'block'; el.className = 'conn-indicator' + (connected ? '' : ' offline'); el.title = connected ? 'Connected' : 'Offline'; }
+
+window.addEventListener('online', function() { isOnline = true; document.getElementById('offlineBanner').style.display = 'none'; showConnIndicator(supabase !== null); if (supabase) loadItemsFromSupabase(); });
+window.addEventListener('offline', function() { isOnline = false; document.getElementById('offlineBanner').style.display = 'block'; showConnIndicator(false); });
+
+function showLoading(show) { document.getElementById('loadingOverlay').classList.toggle('active', show); }
+
+// ===== UTILS =====
+function findItem(id) { return state.items.find(function(i) { return i.id === id; }); }
+function escHtml(str) { var d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+function truncate(str, n) { return (str || '').length > n ? str.substring(0, n) + '...' : (str || ''); }
+function timeAgo(ts) { if (!ts) return ''; var diff = Math.floor((Date.now() - ts) / 1000); if (diff < 60) return 'just now'; if (diff < 3600) return Math.floor(diff / 60) + 'm ago'; if (diff < 86400) return Math.floor(diff / 3600) + 'h ago'; return Math.floor(diff / 86400) + 'd ago'; }
+function showToast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTrackedTimeout(function() { t.classList.remove('show'); }, 2500); }
+
+
+// ===== NOTIFICATIONS =====
+function initNotifications() {
+  if (!('Notification' in window)) { state.notifPermission = 'unsupported'; return; }
+  state.notifPermission = Notification.permission;
+  if (state.notifPermission === 'granted') {
+    updateNotifBadge();
+  }
+}
+
+function requestNotifPermission() {
+  if (!('Notification' in window)) { showToast('Notifications not supported'); return; }
+  Notification.requestPermission().then(function(perm) {
+    state.notifPermission = perm;
+    if (perm === 'granted') {
+      showToast('Notifications enabled! 🔔');
+      try { new Notification('GeoGive', { body: "You'll be notified when someone requests your items.", icon: '🎁' }); } catch(e) {}
+    } else if (perm === 'denied') {
+      showToast('Notifications blocked. Enable in browser settings.');
+    }
+  });
+}
+
+function addNotif(title, body, onClick) {
+  var notif = { id: Date.now(), title: title, body: body, read: false, createdAt: Date.now(), onClick: onClick };
+  state.notifications.unshift(notif);
+  if (state.notifications.length > 50) state.notifications = state.notifications.slice(0, 50);
+  updateNotifBadge();
+  renderNotifDropdown();
+  // Show browser notification if permitted and app not focused
+  if (state.notifPermission === 'granted' && document.hidden) {
+    try {
+      var bn = new Notification(title, { body: body, icon: '🎁', tag: 'geogive-' + Date.now() });
+      if (onClick) bn.onclick = onClick;
+    } catch(e) {}
+  }
+  // Also show in-app toast for immediate visibility
+  showToast('🔔 ' + title);
+}
+
+function updateNotifBadge() {
+  var unread = state.notifications.filter(function(n) { return !n.read; }).length;
+  var badge = document.getElementById('notifBadge');
+  if (badge) { badge.textContent = unread; badge.classList.toggle('show', unread > 0); }
+}
+
+function toggleNotifDropdown() {
+  var dd = document.getElementById('notifDropdown');
+  dd.classList.toggle('active');
+  // Mark all as read when opened
+  if (dd.classList.contains('active')) {
+    state.notifications.forEach(function(n) { n.read = true; });
+    updateNotifBadge();
+    // Only request permission if not already decided
+    if (state.notifPermission === 'default') {
+      requestNotifPermission();
+    }
+  }
+  renderNotifDropdown();
+}
+
+function renderNotifDropdown() {
+  var dd = document.getElementById('notifDropdown');
+  if (state.notifications.length === 0) {
+    dd.innerHTML = '<div class="notif-item empty" id="notifEmpty">No notifications yet</div>';
+    return;
+  }
+  var html = '';
+  state.notifications.slice(0, 20).forEach(function(n) {
+    html += '<div class="notif-item ' + (n.read ? '' : 'unread') + '" onclick="handleNotifClick(' + n.id + ')">';
+    html += '<strong>' + escHtml(n.title) + '</strong>';
+    html += '<p style="color:var(--gray-400);font-size:0.75rem;margin-top:2px">' + escHtml(n.body) + ' · ' + timeAgo(n.createdAt) + '</p>';
+    html += '</div>';
+  });
+  dd.innerHTML = html;
+}
+
+function handleNotifClick(id) {
+  var notif = state.notifications.find(function(n) { return n.id === id; });
+  if (notif) { notif.read = true; updateNotifBadge(); }
+  if (notif && notif.onClick) notif.onClick();
+  document.getElementById('notifDropdown').classList.remove('active');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  var dd = document.getElementById('notifDropdown');
+  var bell = document.getElementById('notifBell');
+  if (dd && dd.classList.contains('active') && !dd.contains(e.target) && bell && !bell.contains(e.target)) {
+    dd.classList.remove('active');
+  }
+});
+
+// FCM placeholder — activated when PWA service worker is registered (Phase 6)
+function initFCM() {
+  // FCM requires a service worker. This is a placeholder that will be
+  // activated when the PWA manifest + service worker are added in Phase 6.
+  // For now, web Notifications API handles in-browser notifications.
+  console.log('FCM will be initialized when PWA service worker is registered');
+}
+
+
+// ===== BOTTOM SHEET SWIPE TO DISMISS =====
+var sheetTouchStartY = 0, sheetTouchCurrentY = 0, sheetIsDragging = false;
+
+function initBottomSheetSwipe() {
+  var sheet = document.getElementById('itemBottomSheet');
+  if (!sheet) return;
+  sheet.addEventListener('touchstart', function(e) {
+    // Only enable swipe-to-dismiss when sheet is scrolled to top
+    if (sheet.scrollTop > 5) { sheetIsDragging = false; return; }
+    sheetTouchStartY = e.touches[0].clientY;
+    sheetIsDragging = true;
+  }, { passive: true });
+  sheet.addEventListener('touchmove', function(e) {
+    if (!sheetIsDragging) return;
+    sheetTouchCurrentY = e.touches[0].clientY;
+    var diff = sheetTouchCurrentY - sheetTouchStartY;
+    if (diff > 0) {
+      sheet.style.transform = 'translateY(' + diff + 'px)';
+    }
+  }, { passive: true });
+  sheet.addEventListener('touchend', function(e) {
+    if (!sheetIsDragging) return;
+    sheetIsDragging = false;
+    var diff = sheetTouchCurrentY - sheetTouchStartY;
+    if (diff > 100) {
+      closeModal('itemModal');
+    }
+    sheet.style.transform = '';
+    sheetTouchStartY = 0; sheetTouchCurrentY = 0;
+  }, { passive: true });
+}
+
+// ===== PULL TO REFRESH =====
+var ptrStartY = 0, ptrIsPulling = false;
+var browseContainer = document.getElementById('page-browse');
+
+if (browseContainer) {
+  browseContainer.addEventListener('touchstart', function(e) {
+    if (window.scrollY <= 0) {
+      ptrStartY = e.touches[0].clientY;
+      ptrIsPulling = true;
+    }
+  }, { passive: true });
+  browseContainer.addEventListener('touchmove', function(e) {
+    if (!ptrIsPulling) return;
+    var diff = e.touches[0].clientY - ptrStartY;
+    if (diff > 60 && window.scrollY <= 0) {
+      var ind = document.getElementById('ptrIndicator');
+      if (ind) ind.classList.add('active');
+    }
+  }, { passive: true });
+  browseContainer.addEventListener('touchend', function(e) {
+    if (!ptrIsPulling) return;
+    ptrIsPulling = false;
+    var ind = document.getElementById('ptrIndicator');
+    if (ind && ind.classList.contains('active')) {
+      ind.classList.remove('active');
+      loadItemsFromSupabase();
+    }
+  }, { passive: true });
+}
+
+// ===== TRUST & SAFETY =====
+state.reports = JSON.parse(localStorage.getItem('geogive_reports') || '[]');
+state.ratings = JSON.parse(localStorage.getItem('geogive_ratings') || '{}');
+state.blockedUsers = JSON.parse(localStorage.getItem('geogive_blocked') || '[]');
+
+function showUserProfile(userId) {
+  // Find user's items and ratings
+  var userItems = state.items.filter(function(i) { return i.ownerId === userId; });
+  var userRatings = state.ratings[userId] || [];
+  var avgRating = userRatings.length > 0 ? (userRatings.reduce(function(s,r) { return s+r; }, 0) / userRatings.length).toFixed(1) : 'New';
+  var userName = userItems.length > 0 ? userItems[0].ownerName : 'User';
+  var isVerified = (state.ratings[userId] && state.ratings[userId].length >= 3);
+
+  var body = '';
+  body += '<div class="user-profile-card">';
+  body += '<div class="avatar">' + escHtml(userName.charAt(0).toUpperCase()) + '</div>';
+  body += '<h3>' + escHtml(userName) + '</h3>';
+  if (isVerified) body += '<span class="verified-badge">✓ Verified</span>';
+  body += '<div class="stats">';
+  body += '<div class="stat"><div class="stat-value">' + userItems.length + '</div><div class="stat-label">Items</div></div>';
+  body += '<div class="stat"><div class="stat-value">' + avgRating + '</div><div class="stat-label">Rating</div></div>';
+  body += '<div class="stat"><div class="stat-value">' + userRatings.length + '</div><div class="stat-label">Reviews</div></div>';
+  body += '</div>';
+  body += '<div style="display:flex;gap:8px;justify-content:center;margin-top:8px">';
+  body += '<button class="report-btn" onclick="openReportModal(\'' + escHtml(userId) + '\')">🚩 Report</button>';
+  body += '<button class="report-btn" onclick="toggleBlockUser(\'' + escHtml(userId) + '\');closeModal(\'itemModal\');">🚫 Block</button>';
+  body += '</div>';
+  body += '</div>';
+
+  document.getElementById('modalTitle').textContent = 'User Profile';
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('itemModal').classList.add('active');
+  setTimeout(function() { var btn = document.querySelector('#itemModal .modal-close'); if (btn) btn.focus(); }, 300);
+}
+
+// ===== PROFILE EDITING =====
+var PROFILE_KEY = 'geogive_profile_';
+
+function loadProfile() {
+  if (!state.user) return;
+  var saved = localStorage.getItem(PROFILE_KEY + state.user.id);
+  if (saved) {
+    try {
+      state.userProfile = JSON.parse(saved);
+    } catch(e) {
+      state.userProfile = null;
+    }
+  }
+  // Also fetch from Supabase for latest
+  if (supabase) {
+    supabase.from('profiles').select('*').eq('id', state.user.id).single().then(function(result) {
+      if (result.data) {
+        state.userProfile = result.data;
+        localStorage.setItem(PROFILE_KEY + state.user.id, JSON.stringify(result.data));
+        updateHeaderProfile();
+      }
+    }).catch(function() { /* profiles table may not exist yet */ });
+  }
+}
+
+function saveProfile(profileData) {
+  if (!state.user) return;
+  var profile = Object.assign({ id: state.user.id, updated_at: new Date().toISOString() }, profileData);
+  state.userProfile = profile;
+  localStorage.setItem(PROFILE_KEY + state.user.id, JSON.stringify(profile));
+  if (supabase) {
+    supabase.from('profiles').upsert(profile).then(function() {});
+  }
+  updateHeaderProfile();
+  showToast('Profile saved! ✓');
+}
+
+function updateHeaderProfile() {
+  if (!state.user) return;
+  var name = (state.userProfile && state.userProfile.display_name) || (state.user.email ? state.user.email.split('@')[0] : 'User');
+  var avatar = state.userProfile && state.userProfile.avatar_url;
+  var avatarEl = document.getElementById('userAvatarSmall');
+  var nameEl = document.getElementById('userNameDisplay');
+  if (avatarEl) {
+    if (avatar) {
+      avatarEl.innerHTML = '<img src="' + escHtml(avatar) + '" alt="">';
+    } else {
+      avatarEl.textContent = name.charAt(0).toUpperCase();
+    }
+  }
+  if (nameEl) nameEl.textContent = name;
+}
+
+function openEditProfile() {
+  if (!state.user) { openAuthModal(); return; }
+  var prof = state.userProfile || {};
+  var name = prof.display_name || (state.user.email ? state.user.email.split('@')[0] : '');
+  var bio = prof.bio || '';
+  var avatar = prof.avatar_url || '';
+  var body = '';
+  body += '<div class="profile-edit-card">';
+  body += '<h3>✏️ Edit Profile</h3>';
+  body += '<div class="avatar-preview" id="avatarPreview">';
+  if (avatar) { body += '<img src="' + escHtml(avatar) + '" alt="">'; }
+  else { body += escHtml(name.charAt(0).toUpperCase()); }
+  body += '</div>';
+  body += '<label for="profileAvatar">Avatar URL</label>';
+  body += '<input type="text" id="profileAvatar" placeholder="https://..." value="' + escHtml(avatar) + '">';
+  body += '<label for="profileName">Display Name</label>';
+  body += '<input type="text" id="profileName" placeholder="Your name" value="' + escHtml(name) + '" maxlength="32">';
+  body += '<label for="profileBio">Bio</label>';
+  body += '<textarea id="profileBio" placeholder="A short bio..." maxlength="160">' + escHtml(bio) + '</textarea>';
+  body += '<button class="btn btn-primary btn-full" onclick="submitProfileEdit()">Save Profile</button>';
+  body += '</div>';
+  document.getElementById('modalTitle').textContent = 'Edit Profile';
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('itemModal').classList.add('active');
+  setTimeout(function() { var btn = document.querySelector('#itemModal .modal-close'); if (btn) btn.focus(); }, 300);
+}
+
+function submitProfileEdit() {
+  var name = document.getElementById('profileName').value.trim();
+  var bio = document.getElementById('profileBio').value.trim();
+  var avatar = document.getElementById('profileAvatar').value.trim();
+  if (!name) { showToast('Please enter a display name'); return; }
+  saveProfile({ display_name: name, bio: bio, avatar_url: avatar });
+  closeModal('itemModal');
+}
+
+function openReportModal(userId) {
+  closeModal('itemModal');
+  state.reportingUserId = userId;
+  document.getElementById('reportModal').classList.add('active');
+}
+
+function submitReport() {
+  var reason = document.getElementById('reportReason').value;
+  var details = document.getElementById('reportDetails').value.trim();
+  state.reports.push({ userId: state.reportingUserId, reason: reason, details: details, createdAt: Date.now() });
+  localStorage.setItem('geogive_reports', JSON.stringify(state.reports));
+  closeModal('reportModal');
+  document.getElementById('reportReason').value = 'spam';
+  document.getElementById('reportDetails').value = '';
+  showToast('Report submitted. Thank you for keeping GeoGive safe.');
+  state.reportingUserId = null;
+}
+
+function showRatingPrompt(itemId, userId) {
+  var body = '';
+  body += '<div class="rating-prompt">';
+  body += '<h4>⭐ Rate your experience</h4>';
+  body += '<p style="font-size:0.85rem;color:var(--gray-400);margin-bottom:12px;">How was your pickup?</p>';
+  body += '<div class="star-rating" id="ratingStars">';
+  for (var i = 1; i <= 5; i++) {
+    body += '<span class="star" data-rating="' + i + '" onclick="submitRating(' + itemId + ',\'' + escHtml(userId) + '\',' + i + ')">★</span>';
+  }
+  body += '</div>';
+  body += '<button class="btn btn-secondary btn-sm" onclick="closeModal(&#39;itemModal&#39;)" style="margin-top:8px">Skip</button>';
+  body += '</div>';
+  document.getElementById('modalTitle').textContent = 'Rate Experience';
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('itemModal').classList.add('active');
+  setTimeout(function() { var btn = document.querySelector('#itemModal .modal-close'); if (btn) btn.focus(); }, 300);
+}
+
+function submitRating(itemId, userId, rating) {
+  if (!state.user) return;
+  // Check for duplicate: key = userId_itemId
+  var ratingKey = userId + '_item_' + itemId;
+  if (state.ratings[ratingKey]) return; // Already rated this item
+  state.ratings[ratingKey] = { rating: rating, raterId: state.user.id, createdAt: Date.now() };
+  // Also maintain aggregate array for profile display
+  if (!state.ratings[userId]) state.ratings[userId] = [];
+  state.ratings[userId].push(rating);
+  localStorage.setItem('geogive_ratings', JSON.stringify(state.ratings));
+  var item = findItem(itemId);
+  if (item) item.rated = true;
+  closeModal('itemModal');
+  showToast('Thanks for rating! ⭐');
+}
+
+function isUserBlocked(userId) {
+  return state.blockedUsers.indexOf(userId) !== -1;
+}
+
+function toggleBlockUser(userId) {
+  if (isUserBlocked(userId)) {
+    state.blockedUsers = state.blockedUsers.filter(function(id) { return id !== userId; });
+    showToast('User unblocked.');
+  } else {
+    state.blockedUsers.push(userId);
+    showToast('User blocked.');
+  }
+  localStorage.setItem('geogive_blocked', JSON.stringify(state.blockedUsers));
+  applyFilters(); // Re-filter to hide blocked users' items
+}
+
+// Filter out blocked users' items
+var origGetFilteredItems = getFilteredItems;
+getFilteredItems = function() {
+  var items = origGetFilteredItems();
+  if (state.blockedUsers.length > 0) {
+    items = items.filter(function(item) { return state.blockedUsers.indexOf(item.ownerId) === -1; });
+  }
+  // Filter out expired items by default unless showExpired is toggled
+  var showExpired = localStorage.getItem('geogive_show_expired') === 'true';
+  if (!showExpired) {
+    items = items.filter(function(item) { return !isItemExpired(item); });
+  }
+  return items;
+};
+
+// Safety tips on first use
+function showSafetyTips() {
+  if (localStorage.getItem('geogive_safety_shown')) return;
+  var body = '';
+  body += '<div class="safety-tips">';
+  body += '<h4>🛡️ Safety Tips</h4>';
+  body += '<ul>';
+  body += '<li>Meet in public, well-lit places</li>';
+  body += '<li>Bring a friend for high-value items</li>';
+  body += '<li>Inspect items before taking</li>';
+  body += '<li>Trust your instincts — if something feels off, walk away</li>';
+  body += '<li>Report suspicious behavior</li>';
+  body += '</ul>';
+  body += '</div>';
+  body += '<button class="btn btn-primary btn-full" onclick="closeModal(&#39;itemModal&#39;)">Got it!</button>';
+  document.getElementById('modalTitle').textContent = 'Stay Safe';
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('itemModal').classList.add('active');
+  localStorage.setItem('geogive_safety_shown', 'true');
+}
+
+// ===== INIT =====
+initSupabase();
+setupAuthListener();
+checkSession();
+loadItemsFromSupabase();
+initGeolocation();
+initNotifications();
+loadProfile();
+// Restore show expired toggle
+var savedShowExpired = localStorage.getItem('geogive_show_expired');
+if (savedShowExpired === 'true') {
+  var cb = document.getElementById('showExpiredToggle');
+  if (cb) cb.checked = true;
+}
+setTimeout(function() { if (state.user) showSafetyTips(); }, 2000);
+initBottomSheetSwipe();
+showConnIndicator(false);
+
+// ===== SERVICE WORKER =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(function(reg) {
+    console.log('SW registered:', reg.scope);
+  }).catch(function(err) {
+    console.warn('SW registration failed:', err);
+  });
+}
+
+// ===== OFFLINE QUEUE =====
+state.offlineQueue = JSON.parse(localStorage.getItem('geogive_offline_queue') || '[]');
+
+function queueOfflineAction(action, data) {
+  state.offlineQueue.push({ action: action, data: data || null, timestamp: Date.now() });
+  localStorage.setItem('geogive_offline_queue', JSON.stringify(state.offlineQueue));
+}
+
+async function replayOfflineQueue() {
+  if (state.offlineQueue.length === 0) return;
+  var queue = state.offlineQueue.slice();
+  state.offlineQueue = [];
+  localStorage.setItem('geogive_offline_queue', '[]');
+  var failed = [];
+  // Process sequentially to handle async operations correctly
+  for (var i = 0; i < queue.length; i++) {
+    var item = queue[i];
+    try {
+      if (!supabase) { failed.push(item); continue; }
+      if (item.action === 'listItem' && item.data) {
+        // Supabase save is async; we await to ensure sequential writes
+        // The function itself falls back to localStorage on any error
+        await saveItemToSupabase(item.data);
+      } else if (item.action === 'requestItem' && item.data) {
+        var it = findItem(item.data.itemId);
+        if (it) await createRequest(it);
+        else failed.push(item);
+      }
+    } catch(e) { failed.push(item); }
+  }
+  // Re-queue failures
+  if (failed.length > 0) {
+    state.offlineQueue = failed.concat(state.offlineQueue);
+    localStorage.setItem('geogive_offline_queue', JSON.stringify(state.offlineQueue));
+  }
+  var successCount = queue.length - failed.length;
+  if (successCount > 0) showToast('Synced ' + successCount + ' offline action(s)');
+}
+
+// Queue actions when offline
+function handleOfflineSubmit(item) {
+  if (!isOnline || !supabase) {
+    queueOfflineAction('listItem', item);
+    showToast('You\'re offline. Item will be listed when back online.');
+    return true; // Was queued
+  }
+  return false; // Not queued, proceed normally
+}
+window.addEventListener('online', function() {
+  setTimeout(replayOfflineQueue, 2000); // Give connection time to stabilize
+});
+
+</script>
+</body>
+</html>

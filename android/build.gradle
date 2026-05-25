@@ -1,0 +1,29 @@
+// Top-level (project-level) build.gradle for GeoGive TWA
+//
+// Place this file at: android/build.gradle
+//
+// This project uses the Bubblewrap-generated TWA structure with
+// android-browser-helper as the TWA library.
+
+buildscript {
+    ext.kotlin_version = '1.9.22'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

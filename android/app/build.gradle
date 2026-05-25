@@ -1,0 +1,71 @@
+// App-level build.gradle for GeoGive TWA
+//
+// Place this file at: android/app/build.gradle
+
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+}
+
+android {
+    namespace 'com.geogive.app'
+    compileSdk 34
+    buildToolsVersion "34.0.0"
+    ndkVersion "25.2.9519653"
+
+    defaultConfig {
+        applicationId "com.geogive.app"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        // Enable multi-dex for older devices
+        multiDexEnabled true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    // Ensure assets from the parent project are bundled
+    sourceSets {
+        main {
+            assets.srcDirs += ['../../']
+        }
+    }
+}
+
+dependencies {
+    // android-browser-helper — the core TWA library
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+
+    // AndroidX core libraries
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.browser:browser:1.7.0'
+
+    // Splash screen support
+    implementation 'androidx.core:core-splashscreen:1.0.1'
+
+    // Kotlin standard library
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+    // Multidex for API < 21 fallback (safety net)
+    implementation 'androidx.multidex:multidex:2.0.1'
+}

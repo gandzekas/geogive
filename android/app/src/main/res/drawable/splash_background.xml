@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    splash_background.xml — Drawable for the TWA splash screen.
+
+    This layer-list drawable shows the GeoGive brand color as the
+    background with the app icon centered on top.
+
+    Replace @mipmap/ic_launcher with your actual launcher icon.
+    Replace @mipmap/ic_launcher_round with your round launcher icon.
+    The icon files should be placed in res/mipmap-* directories.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background: matches PWA theme_color #2d8a4e -->
+    <item android:drawable="@color/splash_background" />
+
+    <!-- Centered app icon (512px recommended for splash) -->
+    <item
+        android:width="180dp"
+        android:height="180dp"
+        android:gravity="center">
+        <bitmap
+            android:src="@mipmap/ic_launcher"
+            android:gravity="fill" />
+    </item>
+</layer-list>
