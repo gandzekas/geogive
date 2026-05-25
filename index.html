@@ -1033,8 +1033,8 @@ function applyFilters() {
 
 // ===== SUPABASE INIT =====
 function initSupabase() {
-  SUPABASE_URL = localStorage.getItem('geogive_sb_url') || '';
-  SUPABASE_KEY = localStorage.getItem('geogive_sb_key') || '';
+  SUPABASE_URL = localStorage.getItem('geogive_sb_url') || SUPABASE_URL;
+  SUPABASE_KEY = localStorage.getItem('geogive_sb_key') || SUPABASE_KEY;
   if (SUPABASE_URL && SUPABASE_KEY) {
     try {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
