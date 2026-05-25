@@ -1039,34 +1039,13 @@ function initSupabase() {
     showConnIndicator(false);
     return;
   }
-  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-    console.warn('GeoGive: Supabase library not loaded, retrying...');
-    showConnIndicator(false);
-    // Dynamic retry: inject script and wait for it
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-    s.onload = function() {
-      try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        showConnIndicator(true);
-        console.log('GeoGive: Supabase connected');
-        // Re-run init chain that depends on supabase
-        setupAuthListener();
-        checkSession();
-        loadItemsFromSupabase();
-      } catch(e) { console.error('GeoGive: Supabase init error', e); showConnIndicator(false); }
-    };
-    s.onerror = function() {
-      console.error('GeoGive: Failed to load Supabase CDN');
-    };
-    document.head.appendChild(s);
-    return;
-  }
   try {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     showConnIndicator(true);
-    console.log('GeoGive: Supabase connected');
-  } catch(e) { console.error('GeoGive: Supabase init error', e); showConnIndicator(false); }
+  } catch(e) {
+    console.error('GeoGive: Supabase init error', e);
+    showConnIndicator(false);
+  }
 }
 
 function setupAuthListener() {
