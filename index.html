@@ -2394,8 +2394,22 @@ showConnIndicator(false);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then(function(reg) {
     console.log('SW registered:', reg.scope);
+    // Force new SW to activate immediately when an update is found
+    reg.addEventListener('updatefound', function() {
+      var newWorker = reg.installing;
+      newWorker.addEventListener('statechange', function() {
+        if (newWorker.state === 'activated') {
+          console.log('New SW activated — reloading for fresh content');
+          window.location.reload();
+        }
+      });
+    });
   }).catch(function(err) {
     console.warn('SW registration failed:', err);
+  });
+  // Also check for controller changes (SW updates from other tabs)
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    window.location.reload();
   });
 }
 
