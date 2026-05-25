@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geogive-v1';
+const CACHE_NAME = 'geogive-v2';
 const OFFLINE_URL = '/index.html';
 
 self.addEventListener('install', function(event) {
