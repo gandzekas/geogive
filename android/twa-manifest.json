@@ -1,6 +1,6 @@
 {
   "packageId": "com.geogive.app",
-  "host": "geogive.app",
+  "host": "gandzekas.github.io",
   "name": "GeoGive",
   "launcherName": "GeoGive",
   "display": "standalone",
@@ -8,8 +8,8 @@
   "navigationColor": "#2d8a4e",
   "backgroundColor": "#f7f7f7",
   "enableNotifications": true,
-  "startUrl": "/index.html",
-  "iconUrl": "https://geogive.app/icon-512.png",
+  "startUrl": "/geogive/",
+  "iconUrl": "https://gandzekas.github.io/geogive/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./geogive-release-key.jks",
@@ -20,7 +20,7 @@
   "generatorApp": "bubblewrap-cli",
   "minSdkVersion": 21,
   "targetSdkVersion": 34,
-  "webManifestUrl": "https://geogive.app/manifest.json",
+  "webManifestUrl": "https://gandzekas.github.io/geogive/manifest.json",
   "features": {
     "locationDelegation": {
       "enabled": true
@@ -34,6 +34,6 @@
   },
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://geogive.app",
+  "fullScopeUrl": "https://gandzekas.github.io/geogive/",
   "orientation": "portrait"
 }
