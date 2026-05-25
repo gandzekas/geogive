@@ -19,14 +19,27 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0.0"
-
-        // Enable multi-dex for older devices
         multiDexEnabled true
+    }
+
+    signingConfigs {
+        release {
+            def localProps = new Properties()
+            def localPropsFile = rootProject.file('gradle-local.properties')
+            if (localPropsFile.exists()) {
+                localProps.load(localPropsFile.newDataInputStream())
+                storeFile rootProject.file(localProps['storeFile'])
+                storePassword localProps['storePassword']
+                keyAlias localProps['keyAlias']
+                keyPassword localProps['keyPassword']
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
@@ -41,13 +54,6 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
-    }
-
-    // Ensure assets from the parent project are bundled
-    sourceSets {
-        main {
-            assets.srcDirs += ['../../']
-        }
     }
 }
 

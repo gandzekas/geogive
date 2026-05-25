@@ -107,7 +107,7 @@
             -->
             <meta-data
                 android:name="android.support.customtabs.trusted.DEFAULT_URL"
-                android:value="https://geogive.app" />
+                android:value="https://gandzekas.github.io/geogive/" />
 
             <!-- Intent filter for deep links -->
             <intent-filter android:autoVerify="true">
@@ -116,7 +116,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="geogive.app" />
+                    android:host="gandzekas.github.io"
+                    android:pathPrefix="/geogive" />
             </intent-filter>
         </activity>
 

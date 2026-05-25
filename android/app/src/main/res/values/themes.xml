@@ -11,7 +11,7 @@
 <resources>
 
     <!-- Base application theme -->
-    <style name="Theme.GeoGive" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="Theme.GeoGive" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Primary brand color (matches PWA theme_color) -->
         <item name="colorPrimary">#2d8a4e</item>
         <item name="colorPrimaryDark">#1b5e20</item>
@@ -23,7 +23,7 @@
 
         <!-- Disable action bar (TWA is full-screen) -->
         <item name="windowActionBar">false</item>
-        <item name="windowNoTitle>true</item>
+        <item name="windowNoTitle">true</item>
     </style>
 
     <!-- Splash screen theme — shown while TWA loads -->

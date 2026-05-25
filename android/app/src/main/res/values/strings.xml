@@ -14,13 +14,13 @@
             \"relation\": [\"delegate_permission/common.handle_all_urls\"],
             \"target\": {
                 \"namespace\": \"web\",
-                \"site\": \"https://geogive.app\"
+                \"site\": \"https://gandzekas.github.io/geogive/\"
             }
         }]
     </string>
 
     <!-- Fallback URL if local asset is not available -->
-    <string name="fallback_url">https://geogive.app/index.html</string>
+    <string name="fallback_url">https://gandzekas.github.io/geogive/</string>
 
     <!-- Custom Tabs package preference (Chrome) -->
     <string name="custom_tabs_provider">com.android.chrome</string>

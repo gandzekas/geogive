@@ -1,2 +1,7 @@
 supabase/.temp/
-supabase/.temp/
+android/geogive-release-key.jks
+android/gradle-local.properties
+android/app/build/
+android/.gradle/
+android/build/
+*.aab
