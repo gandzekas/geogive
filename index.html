@@ -1131,12 +1131,45 @@ handleLogout = async function() {
 
 async function checkSession() {
   if (!supabase) return;
+  // Manual PKCE exchange: check URL hash for auth code from Google OAuth redirect
+  var hash = location.hash;
+  if (hash && hash.includes('code=')) {
+    try {
+      var codeMatch = hash.match(/code=([^&]+)/);
+      if (codeMatch) {
+        var code = decodeURIComponent(codeMatch[1]);
+        var storageKey = supabase.auth.storageKey || 'sb-tfqrgytmlppgovgvyaor-auth-token';
+        var verifier = localStorage.getItem(storageKey + '-code-verifier');
+        if (verifier) {
+          var resp = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=authorization_code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth_code: code, code_verifier: verifier })
+          });
+          var tokens = await resp.json();
+          if (tokens.access_token) {
+            var { data: { session }, error } = await supabase.auth.setSession({
+              access_token: tokens.access_token,
+              refresh_token: tokens.refresh_token
+            });
+            if (session) {
+              state.session = session; state.user = session.user;
+              localStorage.removeItem(storageKey + '-code-verifier');
+              await loadUserData(); updateAuthUI();
+              history.replaceState(null, '', location.pathname + location.search);
+              return;
+            }
+          }
+        }
+      }
+    } catch(e) { console.warn('GeoGive: PKCE exchange error', e); }
+  }
+  // Standard session recovery via initialize()
   try {
-    // Initialize handles PKCE code exchange + URL hash + localStorage recovery
     var { data: { session } } = await supabase.auth.initialize();
     if (session) { state.session = session; state.user = session.user; await loadUserData(); updateAuthUI(); return; }
   } catch(e) { console.warn('GeoGive: initialize error', e); }
-  // Fallback: getSession retries with delay
+  // Fallback: getSession retries
   for (var i = 0; i < 5; i++) {
     try {
       var { data: { session } } = await supabase.auth.getSession();
