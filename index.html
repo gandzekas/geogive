@@ -1040,8 +1040,14 @@ function initSupabase() {
     return;
   }
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { flowType: 'implicit' }
+    });
     showConnIndicator(true);
+    // Clean up OAuth hash from URL after implicit flow
+    if (location.hash && location.hash.includes('access_token')) {
+      history.replaceState(null, '', location.pathname + location.search.replace(/[?&]code=[^&]*/g, ''));
+    }
   } catch(e) {
     console.error('GeoGive: Supabase init error', e);
     showConnIndicator(false);
@@ -1131,11 +1137,15 @@ handleLogout = async function() {
 
 async function checkSession() {
   if (!supabase) return;
-  try {
-    var { data: { session } } = await supabase.auth.getSession();
-    if (session) { state.session = session; state.user = session.user; await loadUserData(); updateAuthUI(); }
-  } catch(e) {}
-}
+  // Retry up to 5 times with 300ms delay for implicit flow token processing
+  for (var i = 0; i < 5; i++) {
+    try {
+      var { data: { session } } = await supabase.auth.getSession();
+      if (session) { state.session = session; state.user = session.user; await loadUserData(); updateAuthUI(); return; }
+    } catch(e) {}
+    await new Promise(function(r) { setTimeout(r, 300); });
+  }
+} 
 
 async function loadUserData() {
   if (!state.user) return;
