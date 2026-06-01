@@ -1,0 +1,19 @@
+{
+  "name": "geogive",
+  "version": "2.0.0",
+  "description": "GeoGive — Location-Based Giveaway PWA",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve . -p 8080",
+    "start": "npx serve . -p 8080",
+    "lint:html": "npx html-validate index.html",
+    "lint:js": "npx eslint js/ --ext .js || true",
+    "format": "npx prettier --write '**/*.{js,css,html,json,md,yml}' || true"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0",
+    "html-validate": "^8.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  }
+}

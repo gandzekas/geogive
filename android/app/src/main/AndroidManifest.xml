@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    AndroidManifest.xml for GeoGive TWA
+
+    This manifest wraps the GeoGive PWA as a Trusted Web Activity.
+    The TWA uses android-browser-helper to launch the web content
+    in a Chrome Custom Tab that looks and feels like a native app.
+
+    Key features:
+    - Launches index.html from android_asset (offline-first)
+    - Falls back to deployed URL if local asset is unavailable
+    - Handles deep links via intent filters
+    - Requests location permission for map-based features
+    - POST_NOTIFICATIONS for Android 13+ (FCM push notifications)
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.geogive.app">
+
+    <!-- Permissions required by GeoGive -->
+    <!-- Location: needed for map-based giveaway discovery -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Internet: needed for Supabase API calls and map tiles -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Network state: for offline/online detection -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Camera: needed for taking photos of items to give away -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Post notifications: for Android 13+ (TIRAMISU) FCM push -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Declare that camera is not strictly required (app works without it) -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GeoGive"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="34">
+
+        <!--
+            Main TWA Activity — launches the GeoGive PWA
+            The default URL is the deployed version; local assets
+            are served via service worker cache first.
+        -->
+        <activity
+            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GeoGive.Splash">
+
+            <!-- Intent filter for the app launcher -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Digital Asset Links verification.
+                The assetlinks.json file must be hosted at:
+                https://YOUR_DOMAIN/.well-known/assetlinks.json
+
+                This proves domain ownership and enables the TWA
+                to bypass the browser chrome (URL bar).
+            -->
+            <meta-data
+                android:name="asset_statements"
+                android:resource="@string/asset_statements" />
+
+            <!--
+                TWA fallback strategy:
+                If the Digital Asset Links verification fails,
+                the app falls back to a Chrome Custom Tab.
+                Set to "customtabs" to allow fallback.
+            -->
+            <meta-data
+                android:name="android.support.customtabs.trusted.FALLBACK_STRATEGY"
+                android:value="customtabs" />
+
+            <!--
+                Splash screen configuration.
+                The splash screen shows while the TWA loads.
+            -->
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_IMAGE"
+                android:resource="@drawable/splash_image" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND"
+                android:color="@color/splash_background" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION"
+                android:value="300" />
+
+            <!--
+                Default URL for the TWA.
+                Change this to your deployed URL when going live.
+                For offline-first testing, the service worker caches
+                the local index.html served from android_asset.
+            -->
+            <meta-data
+                android:name="android.support.customtabs.trusted.DEFAULT_URL"
+                android:value="https://gandzekas.github.io/geogive/" />
+
+            <!-- Intent filter for deep links -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="gandzekas.github.io"
+                    android:pathPrefix="/geogive" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            TWA provider authority — must match the package name.
+            Used internally by android-browser-helper.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
