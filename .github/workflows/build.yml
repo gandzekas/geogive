@@ -8,14 +8,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./android
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy PWA assets
+      - name: Copy PWA assets to Android
         run: |
           mkdir -p android/app/src/main/assets
           cp index.html android/app/src/main/assets/
@@ -42,6 +39,7 @@ jobs:
         run: sdkmanager "ndk;25.2.9519653"
 
       - name: Generate signing key
+        working-directory: ./android
         run: |
           keytool -genkeypair \
             -keystore geogive-release-key.jks \
@@ -54,6 +52,7 @@ jobs:
             -dname "CN=GeoGive, OU=Mobile, O=GeoGive, L=London, ST=London, C=GB"
 
       - name: Create gradle-local.properties
+        working-directory: ./android
         run: |
           cat > gradle-local.properties << 'EOF'
           storeFile=geogive-release-key.jks
@@ -62,11 +61,11 @@ jobs:
           keyPassword=geogive123
           EOF
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
-
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        working-directory: ./android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -75,6 +74,7 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Build Release APK
+        working-directory: ./android
         run: ./gradlew assembleRelease
 
       - name: Upload Release APK
