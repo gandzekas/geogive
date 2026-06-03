@@ -118,8 +118,14 @@ function switchAuthTab(tab) {
 
   var loginForm = document.getElementById('loginForm');
   var registerForm = document.getElementById('registerForm');
-  if (loginForm) loginForm.style.display = (tab === 'login') ? '' : 'none';
-  if (registerForm) registerForm.style.display = (tab === 'register') ? '' : 'none';
+  if (loginForm) {
+    loginForm.style.display = '';
+    loginForm.classList.toggle('active', tab === 'login');
+  }
+  if (registerForm) {
+    registerForm.style.display = '';
+    registerForm.classList.toggle('active', tab === 'register');
+  }
 
   var errEl = document.getElementById('authError');
   var errElReg = document.getElementById('authErrorReg');
@@ -130,19 +136,30 @@ function switchAuthTab(tab) {
 async function handleGoogleAuth() {
   var sb = getSupabase();
   if (!sb) { showAuthError('Supabase not connected. Check Settings.'); return; }
+  //
+  // Close modal before redirect — it'll be gone when we come back
   closeModal('authModalOverlay');
+  //
   try {
     var redirectUrl = window.location.origin + window.location.pathname;
-    var { error } = await sb.auth.signInWithOAuth({
+    var result = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectUrl
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
       }
     });
-    if (error) throw error;
-    // Page redirects to Google → Supabase callback → back here
-    // checkSession() on page load will pick up the session
-  } catch(e) { showAuthError(e.message); }
+    if (result && result.error) throw result.error;
+    // Page now redirects to Google → Supabase → back to redirectUrl
+    // checkSession() on page load picks up the session from URL hash/query
+  } catch(e) {
+    if (e && e.message) {
+      showToast('Google sign-in failed: ' + e.message);
+    }
+  }
 }
 
 async function handleEmailAuth(e) {
