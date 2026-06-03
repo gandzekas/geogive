@@ -12,7 +12,7 @@ function clearAllTimers() { window.timers.forEach(function(id) { clearTimeout(id
 
 function escHtml(str) { var d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
 
-function escJs(str) { return String(str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function escJs(str) { return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, ''); }
 
 function truncate(str, n) { return (str || '').length > n ? str.substring(0, n) + '...' : (str || ''); }
 

@@ -1,22 +1,22 @@
+// ===== OFFLINE QUEUE =====
+
 function queueOfflineAction(action, data) {
   window.state.offlineQueue.push({ action: action, data: data || null, timestamp: Date.now() });
   localStorage.setItem('geogive_offline_queue', JSON.stringify(window.state.offlineQueue));
 }
 
 async function replayOfflineQueue() {
+  var sb = getSupabase();
   if (window.state.offlineQueue.length === 0) return;
   var queue = window.state.offlineQueue.slice();
   window.state.offlineQueue = [];
   localStorage.setItem('geogive_offline_queue', '[]');
   var failed = [];
-  // Process sequentially to handle async operations correctly
   for (var i = 0; i < queue.length; i++) {
     var item = queue[i];
     try {
-      if (!supabase) { failed.push(item); continue; }
+      if (!sb) { failed.push(item); continue; }
       if (item.action === 'listItem' && item.data) {
-        // Supabase save is async; we await to ensure sequential writes
-        // The function itself falls back to localStorage on any error
         await saveItemToSupabase(item.data);
       } else if (item.action === 'requestItem' && item.data) {
         var it = findItem(item.data.itemId);
@@ -25,7 +25,6 @@ async function replayOfflineQueue() {
       }
     } catch(e) { failed.push(item); }
   }
-  // Re-queue failures
   if (failed.length > 0) {
     window.state.offlineQueue = failed.concat(window.state.offlineQueue);
     localStorage.setItem('geogive_offline_queue', JSON.stringify(window.state.offlineQueue));
@@ -35,10 +34,11 @@ async function replayOfflineQueue() {
 }
 
 function handleOfflineSubmit(item) {
-  if (!isOnline || !supabase) {
+  var sb = getSupabase();
+  if (!isOnline || !sb) {
     queueOfflineAction('listItem', item);
     showToast('You\'re offline. Item will be listed when back online.');
-    return true; // Was queued
+    return true;
   }
-  return false; // Not queued, proceed normally
+  return false;
 }

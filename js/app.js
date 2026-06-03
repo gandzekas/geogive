@@ -25,8 +25,7 @@ var state = {
 
 var timers = [];
 
-// Supabase client reference (set by initSupabase)
-window.supabaseClient = null;
+// Supabase client reference (set by initSupabase in config.js)
 
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', function() {
@@ -46,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
   } catch(e) {}
 
   // Init Supabase
-  window.supabaseClient = initSupabase();
+  var supabaseClient = initSupabase();
   if (!supabaseClient) {
     showConnIndicator(false);
     showToast('Open Settings (⚙️) to configure Supabase credentials');

@@ -152,8 +152,8 @@ function renderRequests() {
     html += '<span class="badge badge-condition">' + req.status + '</span></div>';
     if (req.status === 'pending' && req.ownerId === window.state.user.id) {
       html += '<div class="item-actions" style="margin-top:8px">';
-      html += '<button class="btn btn-primary btn-sm" onclick="respondToRequest(\'' + req.id + '\',\'accepted\')">Accept</button> ';
-      html += '<button class="btn btn-secondary btn-sm" onclick="respondToRequest(\'' + req.id + '\',\'declined\')">Decline</button>';
+      html += '<button class="btn btn-primary btn-sm" onclick="respondToRequest(\'' + escJs(req.id) + '\',\'accepted\')">Accept</button> ';
+      html += '<button class="btn btn-secondary btn-sm" onclick="respondToRequest(\'' + escJs(req.id) + '\',\'declined\')">Decline</button>';
       html += '</div>';
     }
     html += '</div></div>';

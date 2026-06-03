@@ -53,7 +53,7 @@ function renderMapMarkers() {
 function buildMapPopup(item) {
   var emoji = CATEGORY_EMOJI[item.category] || '📦';
   var dist = item.distance ? item.distance.toFixed(1) + ' mi away' : '';
-  var safeId = escHtml(item.id);
+  var safeId = String(item.id).replace(/'/g, "\\'");
   return '<div class="map-popup">' +
     '<h4>' + emoji + ' ' + escHtml(item.title) + '</h4>' +
     '<p>' + escHtml(truncate(item.desc, 60)) + '</p>' +
@@ -84,7 +84,7 @@ function setView(view) {
 
 function updateRadiusLabel(val) {
   window.state.radiusMiles = parseInt(val);
-  document.getElementById('radiusValue').textContent = val + ' km';
+  document.getElementById('radiusValue').textContent = val + ' mi';
 }
 
 function getFilteredItems() {
