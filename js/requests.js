@@ -1,3 +1,5 @@
+// ===== REQUESTS =====
+
 function normalizeRequest(r) {
   return {
     id: r.id, itemId: r.item_id || '', requesterId: r.requester_id || '',
@@ -9,9 +11,10 @@ function normalizeRequest(r) {
 
 async function createRequest(item) {
   if (!window.state.user) { openAuthModal(); showToast('Please sign in to request items.'); return; }
-  if (!supabase) return createRequestLocal(item);
+  var sb = getSupabase();
+  if (!sb) return createRequestLocal(item);
   try {
-    var { data: reqData, error } = await window.supabaseClient.from('requests').insert({
+    var { data: reqData, error } = await sb.from('requests').insert({
       item_id: item.id, requester_id: window.state.user.id, owner_id: item.ownerId,
       item_title: item.title, requester_name: (window.state.userProfile && window.state.userProfile.display_name) || window.state.user.email.split('@')[0],
       owner_name: item.ownerName, status: 'pending', created_at: new Date().toISOString()
@@ -19,7 +22,7 @@ async function createRequest(item) {
     if (error) throw error;
     var chatId = buildChatId(item.ownerId, window.state.user.id, item.id);
     try {
-      await window.supabaseClient.from('chats').insert({ id: chatId, request_id: reqData.id, item_id: item.id, item_title: item.title, participant_1: item.ownerId, participant_2: window.state.user.id, messages: [{ from: 'system', text: 'Request sent for "' + item.title + '"', createdAt: Date.now() }], created_at: new Date().toISOString() });
+      await sb.from('chats').insert({ id: chatId, request_id: reqData.id, item_id: item.id, item_title: item.title, participant_1: item.ownerId, participant_2: window.state.user.id, messages: [{ from: 'system', text: 'Request sent for "' + item.title + '"', createdAt: Date.now() }], created_at: new Date().toISOString() });
     } catch(chatError) { console.warn('Chat creation failed:', chatError); }
     window.state.requests.push(normalizeRequest(reqData));
     window.state.chats[chatId] = { id: chatId, itemId: item.id, itemTitle: item.title, participants: [item.ownerId, window.state.user.id], messages: [{ from: 'system', text: 'Request sent for "' + item.title + '"', createdAt: Date.now() }] };
@@ -45,9 +48,10 @@ function createRequestLocal(item) {
 }
 
 async function loadRequestsFromSupabase() {
-  if (!supabase || !window.state.user) return loadRequestsFromStorage();
+  var sb = getSupabase();
+  if (!sb || !window.state.user) return loadRequestsFromStorage();
   try {
-    var { data, error } = await window.supabaseClient.from('requests').select('*').or('requester_id.eq.' + window.state.user.id + ',owner_id.eq.' + window.state.user.id).order('created_at', { ascending: false });
+    var { data, error } = await sb.from('requests').select('*').or('requester_id.eq.' + window.state.user.id + ',owner_id.eq.' + window.state.user.id).order('created_at', { ascending: false });
     if (error) throw error;
     window.state.requests = (data || []).map(normalizeRequest);
     await loadChatsFromSupabase();
@@ -61,14 +65,12 @@ function respondToRequest(reqId, action) {
   if (!req) return;
   if (req.status !== 'pending') { showToast('This request has already been ' + req.status); return; }
   req.status = action;
-  // Notify requester
   var msg = action === 'accepted' ? 'Your request for "' + req.itemTitle + '" was accepted! 🎉' : 'Your request for "' + req.itemTitle + '" was declined.';
   addNotif('Request ' + (action === 'accepted' ? 'Accepted' : 'Declined'), msg);
-  // Update Supabase
-  if (supabase) {
-    window.supabaseClient.from('requests').update({ status: action, updated_at: new Date().toISOString() }).eq('id', reqId).then(function() {});
+  var sb = getSupabase();
+  if (sb) {
+    sb.from('requests').update({ status: action, updated_at: new Date().toISOString() }).eq('id', reqId).then(function() {});
   }
-  // Add system message to chat
   var chatId = buildChatId(req.ownerId, req.requesterId, req.itemId);
   var chat = window.state.chats[chatId];
   if (chat) {

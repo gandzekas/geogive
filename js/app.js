@@ -1,6 +1,4 @@
 // GeoGive - Main Application Entry Point
-// Loads all modules and initializes the app
-
 
 // ===== STATE =====
 var isOnline = navigator.onLine;
@@ -15,7 +13,14 @@ var state = {
   locationStatus: 'pending',
   map: null, mapMarkers: [],
   currentView: 'list',
-  radiusMiles: 10
+  radiusMiles: 10,
+  currentPage: 1,
+  pageSize: 20,
+  isLoadingMore: false,
+  scrollObserver: null,
+  offlineQueue: [],
+  ratings: {},
+  blockedUsers: []
 };
 
 var timers = [];
@@ -25,80 +30,65 @@ window.supabaseClient = null;
 
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', function() {
-  // Set global references that modules use
   window.state = state;
   window.timers = timers;
-  
+
+  // Load offline queue
+  try {
+    var q = localStorage.getItem('geogive_offline_queue');
+    if (q) state.offlineQueue = JSON.parse(q);
+  } catch(e) {}
+
+  // Load blocked users
+  try {
+    var b = localStorage.getItem('geogive_blocked');
+    if (b) state.blockedUsers = JSON.parse(b);
+  } catch(e) {}
+
   // Init Supabase
   window.supabaseClient = initSupabase();
   if (!supabaseClient) {
     showConnIndicator(false);
-    showToast('Open Settings (⚙️) to configure Supabase credentials', 'warning');
+    showToast('Open Settings (⚙️) to configure Supabase credentials');
   } else {
     showConnIndicator(true);
   }
-  
+
   // Auth
   setupAuthListener();
   checkSession();
-  
+
   // Geolocation
   initGeolocation();
-  
-  // Load items (from Supabase or localStorage fallback)
+
+  // Load items
   if (supabaseClient) {
     loadItemsFromSupabase();
   } else {
     loadItemsFromStorage();
   }
-  
-  // UI
-  initBottomSheetSwipe();
-  
-  // Page navigation via data-page attributes
-  document.querySelectorAll('[data-page]').forEach(function(el) {
-    el.addEventListener('click', function(e) {
-      var page = el.getAttribute('data-page');
-      if (page) switchPage(page);
-    });
-  });
-  
-  // Bottom nav
-  document.querySelectorAll('.nav-tab').forEach(function(tab) {
-    tab.addEventListener('click', function() {
-      var page = tab.getAttribute('data-page');
-      if (page) switchPage(page);
-    });
-  });
-  
+
   // Network status
   window.addEventListener('online', function() {
     isOnline = true;
     showConnIndicator(true);
-    if (supabaseClient) loadItemsFromSupabase();
+    if (supabaseClient) {
+      replayOfflineQueue();
+      loadItemsFromSupabase();
+    }
   });
   window.addEventListener('offline', function() {
     isOnline = false;
     showConnIndicator(false);
   });
-  
+
   // Notifications (optional)
   if ('serviceWorker' in navigator && 'Notification' in window) {
-    initNotifications().catch(function() {});
-    initFCM().catch(function() {});
-  }
-});
-
-// ===== OFFLINE QUEUE REPLAY =====
-window.addEventListener('online', function() {
-  if (supabaseClient) {
-    replayOfflineQueue();
-    loadItemsFromSupabase();
+    initNotifications();
   }
 });
 
 // ===== GLOBAL EXPOSURES for inline handlers =====
-// These are called from HTML onclick/onchange attributes
 window.switchPage = switchPage;
 window.openAuthModal = openAuthModal;
 window.closeModal = closeModal;
@@ -134,6 +124,6 @@ window.switchAuthTab = switchAuthTab;
 window.debounceSearch = debounceSearch;
 window.initFCM = initFCM;
 window.submitProfileEdit = submitProfileEdit;
+window.renderProfile = renderProfile;
 
-// Make state globally accessible
 window.state = state;

@@ -1,18 +1,18 @@
+// ===== IMAGE HANDLING =====
+
+var compressingCount = 0;
+
 function handleImageSelect(e) {
   var files = e.target.files; if (!files || !files.length) return;
   var remaining = MAX_IMAGES - window.state.selectedImages.length;
-  if (remaining <= 0) { showImageError('Maximum ' + MAX_IMAGES + ' photos.'); return; }
+  if (remaining <= 0) { showToast('Maximum ' + MAX_IMAGES + ' photos.'); return; }
   var toProcess = Math.min(files.length, remaining);
   var processed = 0;
   for (var i = 0; i < toProcess; i++) {
     var file = files[i];
-    if (file.size > MAX_IMAGE_SIZE * 5) { showImageError('"' + file.name + '" is too large (max 10MB raw).'); continue; }
-    compressAndAddImage(file, remaining - processed);
+    if (file.size > MAX_IMAGE_SIZE * 1024 * 1024) { showToast('"' + file.name + '" is too large (max ' + MAX_IMAGE_SIZE + 'MB).'); continue; }
+    compressAndAddImage(file);
     processed++;
-  }
-  if (processed > 0) {
-    var ind = document.getElementById('compressIndicator');
-    if (ind) ind.classList.add('active');
   }
   e.target.value = '';
 }
@@ -21,13 +21,10 @@ function doneCompressing() {
   compressingCount--;
   if (compressingCount <= 0) {
     compressingCount = 0;
-    var ind = document.getElementById('compressIndicator');
-    if (ind) { setTrackedTimeout(function() { ind.classList.remove('active'); }, 800); }
   }
 }
 
-function compressAndAddImage(file, slotsRemaining) {
-  if (slotsRemaining <= 0) return;
+function compressAndAddImage(file) {
   compressingCount++;
   var reader = new FileReader();
   reader.onload = function(ev) {
@@ -69,14 +66,10 @@ function compressAndAddImage(file, slotsRemaining) {
   reader.readAsDataURL(file);
 }
 
-function showImageError(msg) { var el = document.getElementById('imageError'); el.textContent = msg; el.style.display = 'block'; setTrackedTimeout(function() { el.style.display = 'none'; }, 4000); }
-
-function getTotalImageSize() {
-  return window.state.selectedImages.reduce(function(s, img) { return s + img.length; }, 0);
-}
-
 function renderImagePreviews() {
-  var grid = document.getElementById('imagePreviewGrid'); var html = '';
+  var grid = document.getElementById('imagePreviews');
+  if (!grid) return;
+  var html = '';
   window.state.selectedImages.forEach(function(dataUrl, idx) {
     html += '<div class="image-preview"><img src="' + dataUrl + '" alt="Photo ' + (idx + 1) + '"><button class="remove-btn" onclick="removeImage(' + idx + ')" aria-label="Remove photo ' + (idx + 1) + '">✕</button></div>';
   });
