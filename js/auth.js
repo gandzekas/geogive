@@ -64,9 +64,11 @@ async function loadUserData() {
     var { data: profile } = await sb.from('profiles').select('*').eq('id', window.state.user.id).single();
     if (profile) {
       window.state.userProfile = profile;
-      updateAuthUI();
     }
-  } catch(e) {}
+  } catch(e) {
+    // Profile might not exist yet — that's OK, we'll use email as display name
+  }
+  updateAuthUI();
 }
 
 function updateAuthUI() {
