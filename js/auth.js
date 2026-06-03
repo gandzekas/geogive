@@ -128,16 +128,13 @@ function switchAuthTab(tab) {
 async function handleGoogleAuth() {
   var sb = getSupabase();
   if (!sb) { showAuthError('Supabase not connected. Check Settings.'); return; }
+  closeModal('authModalOverlay');
   try {
     var redirectUrl = window.location.origin + window.location.pathname;
     var { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectUrl,
-        queryParams: {
-          prompt: 'consent',
-          access_type: 'offline'
-        }
+        redirectTo: redirectUrl
       }
     });
     if (error) throw error;
@@ -158,22 +155,46 @@ async function handleEmailAuth(e) {
     if (!isRegister) {
       var email = document.getElementById('loginEmail').value.trim();
       var password = document.getElementById('loginPassword').value;
+      if (!email || !password) { showAuthError('Please enter both email and password.'); return; }
       var { error } = await sb.auth.signInWithPassword({ email: email, password: password });
-      if (error) throw error;
+      if (error) {
+        if (error.message && error.message.toLowerCase().includes('confirm')) {
+          showAuthError('Please confirm your email first. Check your inbox for the confirmation link.');
+        } else if (error.message && error.message.toLowerCase().includes('invalid')) {
+          showAuthError('Invalid email or password. Please try again.');
+        } else {
+          showAuthError(error.message || 'Sign in failed. Please try again.');
+        }
+        return;
+      }
     } else {
       var email = document.getElementById('registerEmail').value.trim();
       var password = document.getElementById('registerPassword').value;
+      if (!email || !password) { showAuthErrorReg('Please enter both email and password.'); return; }
+      if (password.length < 6) { showAuthErrorReg('Password must be at least 6 characters.'); return; }
       var { error } = await sb.auth.signUp({ email: email, password: password });
-      if (error) throw error;
+      if (error) {
+        showAuthErrorReg(error.message || 'Registration failed. Please try again.');
+        return;
+      }
+      // Check if email confirmation is required
+      showAuthErrorReg('');
+      var regSuccess = document.getElementById('authSuccessReg');
+      if (regSuccess) {
+        regSuccess.textContent = 'Account created! Check your email to confirm, then sign in.';
+        regSuccess.style.display = 'block';
+      }
+      // Switch to login tab after short delay
+      setTimeout(function() { switchAuthTab('login'); }, 2000);
+      return;
     }
     closeModal('authModalOverlay');
     showToast(isRegister ? 'Account created! 🎉' : 'Welcome back! 🎉');
   } catch(e) {
     if (isRegister) {
-      var el = document.getElementById('authErrorReg');
-      if (el) { el.textContent = e.message; el.style.display = 'block'; }
+      showAuthErrorReg(e.message || 'Registration failed.');
     } else {
-      showAuthError(e.message);
+      showAuthError(e.message || 'Sign in failed.');
     }
   }
 }
@@ -191,7 +212,12 @@ async function handleLogout() {
 
 function showAuthError(msg) {
   var el = document.getElementById('authError');
-  if (el) { el.textContent = msg; el.style.display = 'block'; }
+  if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+}
+
+function showAuthErrorReg(msg) {
+  var el = document.getElementById('authErrorReg');
+  if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
 }
 
 function openSettingsModal() {
