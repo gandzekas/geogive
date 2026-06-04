@@ -226,6 +226,8 @@ async function handleGoogleAuth() {
   window.location.href = authUrl;
 }
 
+window.handleGoogleAuth = handleGoogleAuth;
+
 async function handleEmailAuth(e) {
   e.preventDefault();
   var sb = getSupabase();
