@@ -180,8 +180,8 @@ async function handleGoogleAuth() {
   var sb = getSupabase();
   if (!sb) { showAuthError('Supabase not connected. Check Settings.'); return; }
   closeModal('authModalOverlay');
+  var redirectUrl = window.location.origin + window.location.pathname;
   try {
-    var redirectUrl = window.location.origin + window.location.pathname;
     var result = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -191,13 +191,18 @@ async function handleGoogleAuth() {
     });
     if (result && result.error) throw result.error;
     if (result && result.data && result.data.url) {
-      // Use assign instead of href for better mobile browser compatibility
       window.location.assign(result.data.url);
     } else {
-      showToast('Google sign-in: no OAuth URL received. Check Supabase Google provider config.');
+      // signInWithOAuth didn't return a URL — use direct authorize endpoint
+      window.location.assign('https://tfqrgytmlppgovgvyaor.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl));
     }
   } catch(e) {
-    showToast('Google sign-in failed: ' + (e && e.message ? e.message : 'unknown error'));
+    // If signInWithOAuth throws, try direct authorize as fallback
+    try {
+      window.location.assign('https://tfqrgytmlppgovgvyaor.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl));
+    } catch(e2) {
+      showToast('Google sign-in failed: ' + (e && e.message ? e.message : 'unknown error'));
+    }
   }
 }
 
