@@ -177,7 +177,7 @@ function switchAuthTab(tab) {
 async function handleGoogleAuth() {
   var sb = getSupabase();
   if (!sb) { showAuthError('Supabase not connected. Check Settings.'); return; }
-  dbg('handleGoogleAuth: starting OAuth redirect');
+  dbg('handleGoogleAuth: starting OAuth');
   closeModal('authModalOverlay');
   try {
     var redirectUrl = window.location.origin + window.location.pathname;
@@ -192,8 +192,16 @@ async function handleGoogleAuth() {
         }
       }
     });
-    dbg('handleGoogleAuth: signInWithOAuth returned, result=' + JSON.stringify(result));
+    dbg('handleGoogleAuth: result=' + JSON.stringify(result));
     if (result && result.error) throw result.error;
+    // signInWithOAuth returns the OAuth URL — we must redirect manually
+    if (result && result.data && result.data.url) {
+      dbg('handleGoogleAuth: redirecting to ' + result.data.url.substring(0, 80) + '...');
+      window.location.href = result.data.url;
+    } else {
+      dbg('handleGoogleAuth: no URL in result');
+      showToast('Google sign-in: failed to get OAuth URL');
+    }
   } catch(e) {
     dbg('handleGoogleAuth error: ' + (e && e.message ? e.message : e));
     if (e && e.message) {
