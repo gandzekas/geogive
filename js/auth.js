@@ -4,12 +4,15 @@ function setupAuthListener() {
   var sb = getSupabase();
   if (!sb) return;
   var { data: { subscription } } = sb.auth.onAuthStateChanged(async function(event, session) {
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-      window.state.session = session;
-      window.state.user = session.user;
-      await loadUserData();
-      updateAuthUI();
-      await loadItemsFromSupabase();
+    console.log('Auth event:', event);
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+      if (session) {
+        window.state.session = session;
+        window.state.user = session.user;
+        await loadUserData();
+        updateAuthUI();
+        await loadItemsFromSupabase();
+      }
     } else if (event === 'SIGNED_OUT') {
       window.state.session = null;
       window.state.user = null;
@@ -30,10 +33,10 @@ async function checkSession() {
   var hasAuthData = hash.includes('access_token') || hash.includes('error') || params.has('code') || params.has('error');
 
   if (hasAuthData) {
-    // Clean URL after session is established
+    // Clean URL after session is established — delay to let auth listener process first
     setTimeout(function() {
       history.replaceState(null, '', window.location.pathname);
-    }, 2000);
+    }, 3000);
   }
 
   try {
@@ -44,6 +47,11 @@ async function checkSession() {
 
     if (error) {
       console.warn('getSession error:', error);
+      // If there's an auth error in the URL, show it
+      if (params.has('error')) {
+        var errorDesc = params.get('error_description') || params.get('error') || 'Authentication failed';
+        showToast('Sign-in error: ' + decodeURIComponent(errorDesc));
+      }
     }
 
     if (session) {
@@ -64,9 +72,26 @@ async function loadUserData() {
     var { data: profile } = await sb.from('profiles').select('*').eq('id', window.state.user.id).single();
     if (profile) {
       window.state.userProfile = profile;
+    } else {
+      // Auto-create profile for new users (e.g., Google sign-in)
+      var email = window.state.user.email || '';
+      var name = email.split('@')[0] || 'User';
+      try {
+        var { data: created } = await sb.from('profiles').upsert({
+          id: window.state.user.id,
+          display_name: name
+        }).select().single();
+        if (created) {
+          window.state.userProfile = created;
+        }
+      } catch(profileErr) {
+        // RLS may block insert — that's OK, use fallback
+        console.warn('Profile auto-create failed:', profileErr);
+      }
     }
   } catch(e) {
-    // Profile might not exist yet — that's OK, we'll use email as display name
+    // Profile operations failed — use fallback
+    console.warn('loadUserData error:', e);
   }
   updateAuthUI();
 }
@@ -157,7 +182,11 @@ async function handleGoogleAuth() {
     // checkSession() on page load picks up the session from URL hash/query
   } catch(e) {
     if (e && e.message) {
-      showToast('Google sign-in failed: ' + e.message);
+      var msg = e.message;
+      if (msg.includes('redirect_uri_mismatch') || msg.includes('invalid_request') || msg.includes('redirect')) {
+        msg = 'Google sign-in redirect URL not configured. Contact the app developer.';
+      }
+      showToast('Google sign-in failed: ' + msg);
     }
   }
 }
@@ -168,7 +197,7 @@ async function handleEmailAuth(e) {
   if (!sb) { showAuthError('Supabase not connected. Try again or refresh.'); return; }
 
   var loginForm = document.getElementById('loginForm');
-  var isRegister = loginForm && loginForm.style.display === 'none';
+  var isRegister = loginForm && !loginForm.classList.contains('active');
 
   try {
     if (!isRegister) {
