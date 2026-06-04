@@ -31,6 +31,7 @@ var timers = [];
 document.addEventListener('DOMContentLoaded', function() {
   window.state = state;
   window.timers = timers;
+  dbg('DOMContentLoaded: state initialized');
 
   // Load offline queue
   try {
@@ -47,9 +48,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Init Supabase
   var supabaseClient = initSupabase();
   if (!supabaseClient) {
+    dbg('DOMContentLoaded: Supabase init FAILED');
     showConnIndicator(false);
     showToast('Open Settings (⚙️) to configure Supabase credentials');
   } else {
+    dbg('DOMContentLoaded: Supabase init OK');
     showConnIndicator(true);
   }
 

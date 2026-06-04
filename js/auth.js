@@ -1,17 +1,33 @@
 // ===== AUTHENTICATION =====
 
+// ===== DEBUG LOGGING =====
+function dbg(msg) {
+  var panel = document.getElementById('debugPanel');
+  if (panel) {
+    var line = document.createElement('div');
+    line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+    panel.appendChild(line);
+    if (panel.children.length > 8) panel.removeChild(panel.firstChild);
+  }
+  console.log('[GeoGive]', msg);
+}
+
 function setupAuthListener() {
   var sb = getSupabase();
-  if (!sb) return;
+  if (!sb) { dbg('setupAuthListener: no supabase client'); return; }
+  dbg('setupAuthListener: OK');
   var { data: { subscription } } = sb.auth.onAuthStateChanged(async function(event, session) {
-    console.log('Auth event:', event);
+    dbg('auth event: ' + event + ' session=' + (session ? 'yes' : 'no'));
     if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
       if (session) {
         window.state.session = session;
         window.state.user = session.user;
+        dbg('user: ' + session.user.email);
         await loadUserData();
         updateAuthUI();
         await loadItemsFromSupabase();
+      } else {
+        dbg('event=' + event + ' but no session');
       }
     } else if (event === 'SIGNED_OUT') {
       window.state.session = null;
@@ -25,29 +41,26 @@ function setupAuthListener() {
 
 async function checkSession() {
   var sb = getSupabase();
-  if (!sb) return;
+  if (!sb) { dbg('checkSession: no supabase client'); return; }
 
-  // Check for OAuth redirect data in URL (?code= or #access_token=)
   var hash = window.location.hash || '';
   var params = new URLSearchParams(window.location.search || '');
   var hasAuthData = hash.includes('access_token') || hash.includes('error') || params.has('code') || params.has('error');
+  dbg('checkSession: hash=' + hash.substring(0,60) + ' hasAuthData=' + hasAuthData);
 
   if (hasAuthData) {
-    // Clean URL after session is established — delay to let auth listener process first
     setTimeout(function() {
       history.replaceState(null, '', window.location.pathname);
     }, 3000);
   }
 
   try {
-    // getSession() exchanges any code/token from URL for a real session
     var result = await sb.auth.getSession();
     var session = result.data ? result.data.session : null;
     var error = result.error;
 
     if (error) {
-      console.warn('getSession error:', error);
-      // If there's an auth error in the URL, show it
+      dbg('getSession error: ' + error.message);
       if (params.has('error')) {
         var errorDesc = params.get('error_description') || params.get('error') || 'Authentication failed';
         showToast('Sign-in error: ' + decodeURIComponent(errorDesc));
@@ -55,13 +68,16 @@ async function checkSession() {
     }
 
     if (session) {
+      dbg('getSession: got session for ' + session.user.email);
       window.state.session = session;
       window.state.user = session.user;
       await loadUserData();
       updateAuthUI();
+    } else {
+      dbg('getSession: no session');
     }
   } catch(e) {
-    console.warn('checkSession error:', e);
+    dbg('checkSession exception: ' + e.message);
   }
 }
 
@@ -161,12 +177,11 @@ function switchAuthTab(tab) {
 async function handleGoogleAuth() {
   var sb = getSupabase();
   if (!sb) { showAuthError('Supabase not connected. Check Settings.'); return; }
-  //
-  // Close modal before redirect — it'll be gone when we come back
+  dbg('handleGoogleAuth: starting OAuth redirect');
   closeModal('authModalOverlay');
-  //
   try {
     var redirectUrl = window.location.origin + window.location.pathname;
+    dbg('handleGoogleAuth: redirectTo=' + redirectUrl);
     var result = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -177,10 +192,10 @@ async function handleGoogleAuth() {
         }
       }
     });
+    dbg('handleGoogleAuth: signInWithOAuth returned, result=' + JSON.stringify(result));
     if (result && result.error) throw result.error;
-    // Page now redirects to Google → Supabase → back to redirectUrl
-    // checkSession() on page load picks up the session from URL hash/query
   } catch(e) {
+    dbg('handleGoogleAuth error: ' + (e && e.message ? e.message : e));
     if (e && e.message) {
       var msg = e.message;
       if (msg.includes('redirect_uri_mismatch') || msg.includes('invalid_request') || msg.includes('redirect')) {
