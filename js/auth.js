@@ -48,38 +48,75 @@ async function checkSession() {
   var hash = window.location.hash || '';
   var params = new URLSearchParams(window.location.search || '');
   var hasAuthData = hash.includes('access_token') || hash.includes('error') || params.has('code') || params.has('error');
-  dbg('checkSession: hash=' + hash.substring(0,60) + ' hasAuthData=' + hasAuthData);
+  dbg('checkSession: hash=' + hash.substring(0,80) + ' hasAuthData=' + hasAuthData);
 
+  // If URL has hash fragment with auth data, let Supabase process it
   if (hasAuthData) {
-    setTimeout(function() {
-      history.replaceState(null, '', window.location.pathname);
-    }, 3000);
-  }
-
-  try {
-    var result = await sb.auth.getSession();
-    var session = result.data ? result.data.session : null;
-    var error = result.error;
-
-    if (error) {
-      dbg('getSession error: ' + error.message);
-      if (params.has('error')) {
-        var errorDesc = params.get('error_description') || params.get('error') || 'Authentication failed';
-        showToast('Sign-in error: ' + decodeURIComponent(errorDesc));
+    dbg('checkSession: URL has auth data, exchanging for session...');
+    try {
+      // Supabase v2 can exchange hash tokens for a session
+      var { data, error } = await sb.auth.getSession();
+      if (error) {
+        dbg('checkSession: getSession error: ' + error.message);
+        // Try exchanging the hash fragment directly
+        if (hash.includes('access_token')) {
+          dbg('checkSession: attempting hash exchange...');
+          var hashParams = new URLSearchParams(hash.substring(1));
+          var accessToken = hashParams.get('access_token');
+          var refreshToken = hashParams.get('refresh_token');
+          if (accessToken) {
+            var { data: sessData, error: sessErr } = await sb.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            });
+            if (sessErr) {
+              dbg('checkSession: setSession error: ' + sessErr.message);
+            } else if (sessData && sessData.session) {
+              dbg('checkSession: setSession SUCCESS for ' + sessData.session.user.email);
+              window.state.session = sessData.session;
+              window.state.user = sessData.session.user;
+              await loadUserData();
+              updateAuthUI();
+              // Clean up URL
+              history.replaceState(null, '', window.location.pathname);
+              showToast('Signed in! 🎉');
+              return;
+            }
+          }
+        }
       }
+      if (data && data.session) {
+        dbg('checkSession: got session for ' + data.session.user.email);
+        window.state.session = data.session;
+        window.state.user = data.session.user;
+        await loadUserData();
+        updateAuthUI();
+        history.replaceState(null, '', window.location.pathname);
+        showToast('Signed in! 🎉');
+        return;
+      }
+    } catch(e) {
+      dbg('checkSession: exception: ' + e.message);
     }
-
-    if (session) {
-      dbg('getSession: got session for ' + session.user.email);
-      window.state.session = session;
-      window.state.user = session.user;
-      await loadUserData();
-      updateAuthUI();
-    } else {
-      dbg('getSession: no session');
+    // Clean up URL even on failure
+    setTimeout(function() { history.replaceState(null, '', window.location.pathname); }, 1000);
+  } else {
+    // No hash — just check for existing session
+    try {
+      var result = await sb.auth.getSession();
+      var session = result.data ? result.data.session : null;
+      if (session) {
+        dbg('checkSession: existing session for ' + session.user.email);
+        window.state.session = session;
+        window.state.user = session.user;
+        await loadUserData();
+        updateAuthUI();
+      } else {
+        dbg('checkSession: no session');
+      }
+    } catch(e) {
+      dbg('checkSession exception: ' + e.message);
     }
-  } catch(e) {
-    dbg('checkSession exception: ' + e.message);
   }
 }
 
@@ -180,37 +217,13 @@ async function handleGoogleAuth() {
   dbg('handleGoogleAuth: clicked');
   var sb = getSupabase();
   if (!sb) { dbg('handleGoogleAuth: no supabase client'); showAuthError('Supabase not connected. Check Settings.'); return; }
-  dbg('handleGoogleAuth: closing modal, redirectUrl=' + (window.location.origin + window.location.pathname));
   closeModal('authModalOverlay');
   var redirectUrl = window.location.origin + window.location.pathname;
-  try {
-    dbg('handleGoogleAuth: calling signInWithOAuth');
-    var result = await sb.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        queryParams: { access_type: 'offline', prompt: 'consent' }
-      }
-    });
-    dbg('handleGoogleAuth: signInWithOAuth result=' + JSON.stringify(result));
-    if (result && result.error) { dbg('handleGoogleAuth: result.error=' + result.error.message); throw result.error; }
-    if (result && result.data && result.data.url) {
-      dbg('handleGoogleAuth: redirecting to ' + result.data.url.substring(0, 80));
-      window.location.assign(result.data.url);
-    } else {
-      dbg('handleGoogleAuth: no URL in result, using fallback authorize endpoint');
-      window.location.assign('https://tfqrgytmlppgovgvyaor.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl));
-    }
-  } catch(e) {
-    dbg('handleGoogleAuth: exception=' + (e && e.message ? e.message : e));
-    try {
-      dbg('handleGoogleAuth: fallback direct authorize');
-      window.location.assign('https://tfqrgytmlppgovgvyaor.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl));
-    } catch(e2) {
-      dbg('handleGoogleAuth: fallback also failed=' + (e2 && e2.message ? e2.message : e2));
-      showToast('Google sign-in failed: ' + (e && e.message ? e.message : 'unknown error'));
-    }
-  }
+  dbg('handleGoogleAuth: redirectUrl=' + redirectUrl);
+  // Use direct authorize endpoint — signInWithOAuth can be unreliable on mobile web
+  var authUrl = 'https://tfqrgytmlppgovgvyaor.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl);
+  dbg('handleGoogleAuth: navigating to authorize endpoint');
+  window.location.href = authUrl;
 }
 
 async function handleEmailAuth(e) {
