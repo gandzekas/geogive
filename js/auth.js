@@ -2,13 +2,15 @@
 
 // ===== DEBUG LOGGING =====
 function dbg(msg) {
-  var panel = document.getElementById('debugPanel');
-  if (panel) {
-    var line = document.createElement('div');
-    line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
-    panel.appendChild(line);
-    if (panel.children.length > 8) panel.removeChild(panel.firstChild);
-  }
+  try {
+    var panel = document.getElementById('debugPanel');
+    if (panel) {
+      var line = document.createElement('div');
+      line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+      panel.appendChild(line);
+      if (panel.children.length > 10) panel.removeChild(panel.firstChild);
+    }
+  } catch(e) {}
   console.log('[GeoGive]', msg);
 }
 
@@ -177,40 +179,25 @@ function switchAuthTab(tab) {
 async function handleGoogleAuth() {
   var sb = getSupabase();
   if (!sb) { showAuthError('Supabase not connected. Check Settings.'); return; }
-  dbg('handleGoogleAuth: starting OAuth');
   closeModal('authModalOverlay');
   try {
     var redirectUrl = window.location.origin + window.location.pathname;
-    dbg('handleGoogleAuth: redirectTo=' + redirectUrl);
     var result = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: redirectUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
-        }
+        queryParams: { access_type: 'offline', prompt: 'consent' }
       }
     });
-    dbg('handleGoogleAuth: result=' + JSON.stringify(result));
     if (result && result.error) throw result.error;
-    // signInWithOAuth returns the OAuth URL — we must redirect manually
     if (result && result.data && result.data.url) {
-      dbg('handleGoogleAuth: redirecting to ' + result.data.url.substring(0, 80) + '...');
-      window.location.href = result.data.url;
+      // Use assign instead of href for better mobile browser compatibility
+      window.location.assign(result.data.url);
     } else {
-      dbg('handleGoogleAuth: no URL in result');
-      showToast('Google sign-in: failed to get OAuth URL');
+      showToast('Google sign-in: no OAuth URL received. Check Supabase Google provider config.');
     }
   } catch(e) {
-    dbg('handleGoogleAuth error: ' + (e && e.message ? e.message : e));
-    if (e && e.message) {
-      var msg = e.message;
-      if (msg.includes('redirect_uri_mismatch') || msg.includes('invalid_request') || msg.includes('redirect')) {
-        msg = 'Google sign-in redirect URL not configured. Contact the app developer.';
-      }
-      showToast('Google sign-in failed: ' + msg);
-    }
+    showToast('Google sign-in failed: ' + (e && e.message ? e.message : 'unknown error'));
   }
 }
 
