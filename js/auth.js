@@ -177,11 +177,14 @@ function switchAuthTab(tab) {
 }
 
 async function handleGoogleAuth() {
+  dbg('handleGoogleAuth: clicked');
   var sb = getSupabase();
-  if (!sb) { showAuthError('Supabase not connected. Check Settings.'); return; }
+  if (!sb) { dbg('handleGoogleAuth: no supabase client'); showAuthError('Supabase not connected. Check Settings.'); return; }
+  dbg('handleGoogleAuth: closing modal, redirectUrl=' + (window.location.origin + window.location.pathname));
   closeModal('authModalOverlay');
   var redirectUrl = window.location.origin + window.location.pathname;
   try {
+    dbg('handleGoogleAuth: calling signInWithOAuth');
     var result = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -189,18 +192,22 @@ async function handleGoogleAuth() {
         queryParams: { access_type: 'offline', prompt: 'consent' }
       }
     });
-    if (result && result.error) throw result.error;
+    dbg('handleGoogleAuth: signInWithOAuth result=' + JSON.stringify(result));
+    if (result && result.error) { dbg('handleGoogleAuth: result.error=' + result.error.message); throw result.error; }
     if (result && result.data && result.data.url) {
+      dbg('handleGoogleAuth: redirecting to ' + result.data.url.substring(0, 80));
       window.location.assign(result.data.url);
     } else {
-      // signInWithOAuth didn't return a URL — use direct authorize endpoint
+      dbg('handleGoogleAuth: no URL in result, using fallback authorize endpoint');
       window.location.assign('https://tfqrgytmlppgovgvyaor.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl));
     }
   } catch(e) {
-    // If signInWithOAuth throws, try direct authorize as fallback
+    dbg('handleGoogleAuth: exception=' + (e && e.message ? e.message : e));
     try {
+      dbg('handleGoogleAuth: fallback direct authorize');
       window.location.assign('https://tfqrgytmlppgovgvyaor.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl));
     } catch(e2) {
+      dbg('handleGoogleAuth: fallback also failed=' + (e2 && e2.message ? e2.message : e2));
       showToast('Google sign-in failed: ' + (e && e.message ? e.message : 'unknown error'));
     }
   }
