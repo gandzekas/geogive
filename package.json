@@ -5,9 +5,12 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "serve": "python3 -m http.server 8080"
+    "serve": "python3 -m http.server 8080",
+    "lint:js": "find js -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "lint:html": "npx html-validate index.html"
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "html-validate": "^8.0.0"
   }
 }

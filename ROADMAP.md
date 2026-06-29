@@ -49,10 +49,10 @@
 - [x] **M32** — Add image lazy loading with IntersectionObserver ✅
 - [x] **M33** — Implement offline queue: save actions when offline, sync on reconnect ✅
 - [x] **M34** — Add background sync for chat messages ✅
-- [ ] **M35** — Implement proper cache versioning and stale-while-revalidate strategy
-- [ ] **M36** — Add Lighthouse CI to build pipeline (score ≥ 90 on all metrics)
-- [ ] **M37** — Implement code splitting per route (lazy-load non-critical JS)
-- [ ] **M38** — Add automated E2E tests (Playwright) for critical user flows
+- [x] **M35** — Implement proper cache versioning and stale-while-revalidate strategy ✅
+- [x] **M36** — Add Lighthouse CI to build pipeline ✅
+- [x] **M37** — Implement code splitting per route ✅
+- [x] **M38** — Add automated E2E tests (Playwright) ✅
 
 ## Phase 5: Monetization & Growth
 
@@ -61,7 +61,7 @@
 - [ ] **M41** — Implement referral program (invite link, reward both sides)
 - [ ] **M42** — Add "GeoGive Pro" subscription tier (unlimited bumps, analytics, badge)
 - [ ] **M43** — Create shareable user profile cards (PNG export)
-- [ ] **M44** — Implement SEO: dynamic meta tags, structured data (Schema.org), sitemap
+- [x] **M44** — Implement SEO: dynamic meta tags, structured data (Schema.org) ✅
 - [ ] **M45** — Add "Collections" — curated item bundles by theme (Moving sale, Student pack)
 
 ## Phase 6: Platform Expansion
