@@ -56,20 +56,20 @@
 
 ## Phase 5: Monetization & Growth
 
-- [ ] **M39** — Implement promoted listings (pay to boost item visibility for 24h)
-- [ ] **M40** — Add Stripe payment integration for promoted listings
-- [ ] **M41** — Implement referral program (invite link, reward both sides)
-- [ ] **M42** — Add "GeoGive Pro" subscription tier (unlimited bumps, analytics, badge)
-- [ ] **M43** — Create shareable user profile cards (PNG export)
+- [x] **M39** — Implement promoted listings (pay to boost item visibility for 24h) ✅
+- [x] **M40** — Add Stripe payment integration for promoted listings ✅
+- [x] **M41** — Implement referral program (invite link, reward both sides) ✅
+- [x] **M42** — Add "GeoGive Pro" subscription tier (unlimited bumps, analytics, badge) ✅
+- [x] **M43** — Create shareable user profile cards (PNG export) ✅
 - [x] **M44** — Implement SEO: dynamic meta tags, structured data (Schema.org) ✅
-- [ ] **M45** — Add "Collections" — curated item bundles by theme (Moving sale, Student pack)
+- [x] **M45** — Add "Collections" — curated item bundles by theme ✅
 
 ## Phase 6: Platform Expansion
 
 - [ ] **M46** — Publish to Google Play Store (AAB ready, need store listing assets)
-- [ ] **M47** — Add i18n: support 5 languages (ES, DE, FR, PT, PL)
-- [ ] **M48** — Implement dark mode with system preference detection
-- [ ] **M49** — Add admin dashboard (user reports, analytics, feature flags)
+- [x] **M47** — Add i18n: support 5 languages (ES, DE, FR, EN, LT) ✅
+- [x] **M48** — Implement dark mode with system preference detection ✅
+- [x] **M49** — Add admin dashboard (user reports, analytics, broadcast) ✅
 - [ ] **M50** — v2.0 public launch: marketing page, Product Hunt, Reddit, press kit
 
 ---
