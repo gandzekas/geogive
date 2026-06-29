@@ -308,6 +308,7 @@ function openSettingsModal() {
   document.getElementById('settingsSbKey').value = SUPABASE_KEY;
   document.getElementById('settingsModalOverlay').style.display = 'flex';
   initNotifToggles();
+  if (typeof renderAnalyticsDashboard === 'function') renderAnalyticsDashboard();
 }
 
 function saveSettings() {
