@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geogive-v4';
+const CACHE_NAME = 'geogive-v5';
 const OFFLINE_URL = '/index.html';
 var PRECACHE_URLS = [
   '/index.html',
@@ -148,17 +148,17 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // Cache-first for CSS/JS/images
+  // Stale-while-revalidate for CSS/JS/images (M35)
   event.respondWith(
     caches.match(event.request).then(function(cached) {
-      if (cached) return cached;
-      return fetch(event.request).then(function(response) {
+      var fetchPromise = fetch(event.request).then(function(response) {
         if (response && response.status === 200) {
           var clone = response.clone();
           caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
         }
         return response;
-      });
+      }).catch(function() { return cached; });
+      return cached || fetchPromise;
     })
   );
 });

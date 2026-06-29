@@ -1,0 +1,21 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://localhost:8080/"],
+      "startServerCommand": "python3 -m http.server 8080 --directory .",
+      "startServerReadyTimeout": 10000,
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertions": {
+        "performance": ["error", {"minScore": 0.9}],
+        "accessibility": ["error", {"minScore": 0.9}],
+        "best-practices": ["error", {"minScore": 0.9}],
+        "seo": ["error", {"minScore": 0.9}]
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

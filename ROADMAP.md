@@ -33,8 +33,8 @@
 ## Phase 3: Social & Engagement
 
 - [x] **M21** — Add user profiles with bio, photo, location, and giveaway history ✅
-- [ ] **M22** — Implement follower/following system
-- [ ] **M23** — Add "Give Feed" — chronological feed of items from followed users
+- [x] **M22** — Implement follower/following system ✅
+- [x] **M23** — Add "Give Feed" — chronological feed from followed users ✅
 - [x] **M24** — Implement share-via-link with Open Graph meta tags ✅
 - [x] **M25** — Add in-app feedback form with screenshot attachment ✅
 - [x] **M26** — Implement report/block flow with moderation queue ✅

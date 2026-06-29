@@ -358,6 +358,19 @@ function clearAnalyticsData() {
   } catch(e) { showToast('Failed to clear data.'); }
 }
 
+// ===== DYNAMIC SCRIPT LOADER (M37) =====
+function loadScript(src) {
+  return new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[src="' + src + '"]');
+    if (existing) { resolve(); return; }
+    var script = document.createElement('script');
+    script.src = src + '?v=' + Date.now();
+    script.onload = resolve;
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+}
+
 // ===== TRUST SCORE (M20) =====
 function calculateTrustScore(userId) {
   if (!userId) return 0;
@@ -471,6 +484,7 @@ function getFeedItems() {
 }
 
 function daysUntilExpiry(item) {
+  var createdAt = item.createdAt || (item.created_at ? new Date(item.created_at).getTime() : Date.now());
   var expiresAt = item.expiresAt || (item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000));
   return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
 }

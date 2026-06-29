@@ -1,19 +1,13 @@
 {
-  "name": "geogive",
-  "version": "2.0.0",
-  "description": "GeoGive — Location-Based Giveaway PWA",
-  "private": true,
+  "name": "geogive-tests",
+  "version": "1.0.0",
+  "description": "GeoGive E2E tests with Playwright",
   "scripts": {
-    "dev": "npx serve . -p 8080",
-    "start": "npx serve . -p 8080",
-    "lint:html": "npx html-validate index.html",
-    "lint:js": "npx eslint js/",
-    "format": "npx prettier --write '**/*.{js,css,html,json,md,yml}'"
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "serve": "python3 -m http.server 8080"
   },
   "devDependencies": {
-    "serve": "^14.2.0",
-    "html-validate": "^8.0.0",
-    "eslint": "^8.0.0",
-    "prettier": "^3.0.0"
+    "@playwright/test": "^1.40.0"
   }
 }

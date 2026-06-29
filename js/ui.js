@@ -183,6 +183,15 @@ function closeGuidelinesModal() {
 function switchPage(page) {
   if ((page === 'post' || page === 'mylistings' || page === 'requests') && !window.state.user) { openAuthModal(); showToast('Please sign in first.'); return; }
 
+  // Lazy-load feed module on first visit (M37 — code splitting)
+  if (page === 'feed' && !window.state.feedLoaded) {
+    loadScript('js/feed.js').then(function() {
+      window.state.feedLoaded = true;
+      renderFeed();
+    });
+    return;
+  }
+
   // Cleanup infinite scroll observer when leaving browse
   if (window.state.scrollObserver && page !== 'browse') {
     window.state.scrollObserver.disconnect();
