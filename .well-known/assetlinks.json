@@ -1,10 +1,8 @@
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "com.geogive.app",
-      "sha256_cert_fingerprints": ["16:8B:CB:EE:D6:5E:B3:78:BC:9A:28:A0:61:3D:17:DC:73:F9:6F:B9:97:79:70:F8:59:8B:30:FD:91:42:04:11"]
-    }
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.geogive.app",
+    "sha256_cert_fingerprints": ["DC:DA:B7:CC:BA:38:B0:D0:F2:32:D2:F4:FE:02:4F:45:B3:37:57:5E:04:F4:38:85:C5:83:09:83:FE:46:BC:54"]
   }
-]
+}]
