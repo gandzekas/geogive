@@ -24,9 +24,9 @@
 - [x] **M13** — Add multiple photos per item (gallery carousel, max 5) ✅
 - [x] **M14** — Implement item expiration with auto-archive and renewal prompt ✅
 - [x] **M15** — Add "Save for Later" / bookmark feature with saved items view ✅
-- [ ] **M16** — Implement push notifications for chat messages (Web Push API + Service Worker)
-- [ ] **M17** — Add real-time typing indicators in chat
-- [ ] **M18** — Implement message search within conversations
+- [x] **M16** — Implement push notifications for chat messages (Web Push API + Service Worker) ✅
+- [x] **M17** — Add real-time typing indicators in chat ✅
+- [x] **M18** — Implement message search within conversations ✅
 - [x] **M19** — Add user ratings/reviews after completed giveaways ✅
 - [ ] **M20** — Implement trust score system (completed giveaways, response rate, ratings)
 
@@ -48,7 +48,7 @@
 - [x] **M31** — Implement virtual scrolling for long item lists ✅
 - [x] **M32** — Add image lazy loading with IntersectionObserver ✅
 - [x] **M33** — Implement offline queue: save actions when offline, sync on reconnect ✅
-- [ ] **M34** — Add background sync for chat messages
+- [x] **M34** — Add background sync for chat messages ✅
 - [ ] **M35** — Implement proper cache versioning and stale-while-revalidate strategy
 - [ ] **M36** — Add Lighthouse CI to build pipeline (score ≥ 90 on all metrics)
 - [ ] **M37** — Implement code splitting per route (lazy-load non-critical JS)

@@ -52,9 +52,10 @@ function buildItemCard(item) {
   card += '</div>';
   card += '<div class="item-desc">' + escHtml(truncate(item.desc, 80)) + '</div>';
   // Show owner profile
-  card += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:0.8rem;color:var(--gray-700)">';
+  card += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:0.8rem;color:var(--gray-700);flex-wrap:wrap">';
   card += '<div class="profile-avatar">' + escHtml((item.ownerName || 'A').charAt(0).toUpperCase()) + '</div>';
   card += '<span>' + escHtml(item.ownerName || 'Anonymous') + '</span>';
+  card += trustBadgeHtml(item.ownerId);
   card += '</div>';
   if (!isOwn && item.status === 'available' && !expired) { card += '<div class="item-actions"><button class="btn btn-primary btn-sm" data-fn="requestItem" data-arg-expr="escJs(item.id)">I\'ll Take It</button></div>'; }
   else if (expired && isOwn) { card += '<div class="item-actions"><button class="btn btn-secondary btn-sm" data-fn="renewItem" data-arg-expr="escJs(item.id)">🔄 Renew</button></div>'; }
@@ -158,6 +159,22 @@ function nextOnboardingStep() {
 function skipOnboarding() {
   localStorage.setItem('geogive_onboarded', 'true');
   closeModal('onboardingModalOverlay');
+  // Show community guidelines after onboarding
+  if (!localStorage.getItem('geogive_guidelines_accepted')) {
+    setTrackedTimeout(showCommunityGuidelines, 500);
+  }
+}
+
+// ===== COMMUNITY GUIDELINES (M27) =====
+function showCommunityGuidelines() {
+  if (document.getElementById('guidelinesModalOverlay')) {
+    document.getElementById('guidelinesModalOverlay').style.display = 'flex';
+  }
+}
+
+function closeGuidelinesModal() {
+  localStorage.setItem('geogive_guidelines_accepted', 'true');
+  closeModal('guidelinesModalOverlay');
 }
 
 function switchPage(page) {

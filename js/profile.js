@@ -199,8 +199,9 @@ function showSafetyTips() {
 
 function submitProfileEdit() {
   var name = document.getElementById('profileName') ? document.getElementById('profileName').value.trim() : '';
+  var bio = document.getElementById('profileBio') ? document.getElementById('profileBio').value.trim() : '';
   if (!name) { showToast('Please enter a display name'); return; }
-  saveProfile({ display_name: name });
+  saveProfile({ display_name: name, bio: bio });
   closeModal('itemModalOverlay');
 }
 
@@ -212,23 +213,38 @@ function renderProfile() {
     return;
   }
 
-  // Check if user is admin (simple check — could be expanded)
   var isAdmin = window.state.userProfile && window.state.userProfile.role === 'admin';
-
   var name = (window.state.userProfile && window.state.userProfile.display_name) || window.state.user.email.split('@')[0];
   var bio = (window.state.userProfile && window.state.userProfile.bio) || '';
   var verified = window.state.user.email_confirmed_at || (window.state.userProfile && window.state.userProfile.verified);
+  var trustScore = calculateTrustScore(window.state.user.id);
+  var trustLevel = getTrustLevel(trustScore);
+  var myItems = window.state.items.filter(function(i) { return i.ownerId === window.state.user.id; });
+  var givenAway = myItems.filter(function(i) { return i.status === 'given'; }).length;
+
   var html = '';
   html += '<div style="text-align:center;padding:20px">';
   html += '<div style="width:80px;height:80px;border-radius:50%;background:var(--green);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:12px">' + escHtml(name.charAt(0).toUpperCase()) + '</div>';
   html += '<h3>' + escHtml(name) + '</h3>';
   if (verified) html += '<div class="verified-badge" style="margin:8px auto">✓ Verified</div>';
+  html += '<div style="margin:8px 0">' + trustBadgeHtml(window.state.user.id) + '</div>';
   if (bio) html += '<p style="color:#666;margin-top:8px">' + escHtml(bio) + '</p>';
   html += '<p style="color:#999;font-size:0.85rem;margin-top:8px">' + escHtml(window.state.user.email) + '</p>';
+
+  // Stats
+  html += '<div style="display:flex;justify-content:center;gap:20px;margin:16px 0">';
+  html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + myItems.length + '</div><div style="font-size:0.7rem;color:#999">Listed</div></div>';
+  html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + givenAway + '</div><div style="font-size:0.7rem;color:#999">Given</div></div>';
+  html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + trustScore + '/100</div><div style="font-size:0.7rem;color:#999">Trust</div></div>';
+  html += '</div>';
+
+  // Edit profile
   html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
   html += '<input id="profileName" type="text" value="' + escHtml(name) + '" placeholder="Display name" style="flex:1;min-width:180px;padding:10px;border:1px solid #ddd;border-radius:10px">';
   html += '<button class="btn btn-primary" data-fn="submitProfileEdit" type="button">Save</button>';
-  html += '</div></div>';
+  html += '</div>';
+  html += '<textarea id="profileBio" placeholder="Add a short bio..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-top:8px;min-height:60px">' + escHtml(bio) + '</textarea>';
+  html += '</div>';
 
   // Admin section
   if (isAdmin) {

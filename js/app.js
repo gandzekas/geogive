@@ -107,6 +107,10 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!localStorage.getItem('geogive_onboarded')) {
     setTrackedTimeout(showOnboarding, 1000);
   }
+  // Show community guidelines on first use (M27)
+  if (!localStorage.getItem('geogive_guidelines_accepted')) {
+    setTrackedTimeout(showCommunityGuidelines, 2500);
+  }
   // Pull-to-refresh on browse page (M3)
   setupPullToRefresh();
 
@@ -250,6 +254,9 @@ window.unsubscribeFromPush = unsubscribeFromPush;
 window.isPushSubscribed = isPushSubscribed;
 window.requestNotificationPermission = requestNotificationPermission;
 window.registerBackgroundSync = registerBackgroundSync;
+window.calculateTrustScore = calculateTrustScore;
+window.getTrustLevel = getTrustLevel;
+window.trustBadgeHtml = trustBadgeHtml;
 window.toggleBlockUser = toggleBlockUser;
 window.showSafetyTips = showSafetyTips;
 window.closeSafetyModal = closeSafetyModal;
@@ -267,6 +274,8 @@ window.nextOnboardingStep = nextOnboardingStep;
 window.skipOnboarding = skipOnboarding;
 window.restartOnboarding = restartOnboarding;
 window.togglePushNotifs = togglePushNotifs;
+window.showCommunityGuidelines = showCommunityGuidelines;
+window.closeGuidelinesModal = closeGuidelinesModal;
 window.toggleNotifPref = toggleNotifPref;
 window.filterChatMessages = filterChatMessages;
 window.clearChatSearch = clearChatSearch;

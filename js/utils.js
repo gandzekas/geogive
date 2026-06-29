@@ -358,6 +358,66 @@ function clearAnalyticsData() {
   } catch(e) { showToast('Failed to clear data.'); }
 }
 
+// ===== TRUST SCORE (M20) =====
+function calculateTrustScore(userId) {
+  if (!userId) return 0;
+  var score = 50; // Base score for new users
+  
+  // Get ratings for this user
+  var ratings = getRatingsForUser(userId);
+  if (ratings.length > 0) {
+    var avgRating = ratings.reduce(function(sum, r) { return sum + r.rating; }, 0) / ratings.length;
+    // Ratings contribute up to 30 points (avg 5 stars = 30 points)
+    score += Math.round((avgRating / 5) * 30);
+  } else {
+    score += 15; // Neutral for unrated users
+  }
+  
+  // Completed giveaways: +5 per giveaway, max 15
+  var giveawaysCompleted = getGiveawaysCompleted(userId);
+  score += Math.min(giveawaysCompleted * 5, 15);
+  
+  // Response rate: based on requests responded to
+  var responseRate = getResponseRate(userId);
+  // Response rate contributes up to 5 points
+  score += Math.round(responseRate * 5);
+  
+  return Math.min(100, Math.max(0, score));
+}
+
+function getTrustLevel(score) {
+  if (score >= 80) return { level: 'Trusted', color: '#2d8a4e', icon: '�️' };
+  if (score >= 60) return { level: 'Reliable', color: '#4caf50', icon: '✓' };
+  if (score >= 40) return { level: 'Newcomer', color: '#ff9800', icon: '🌱' };
+  return { level: 'Unverified', color: '#9e9e9e', icon: '?' };
+}
+
+function trustBadgeHtml(userId) {
+  var score = calculateTrustScore(userId);
+  var level = getTrustLevel(score);
+  return '<span class="trust-badge" style="background:' + level.color + '20;color:' + level.color + ';padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:600;text-align:center;white-space:nowrap">' +
+    level.icon + ' ' + level.level + ' (' + score + ')</span>';
+}
+
+function getRatingsForUser(userId) {
+  try {
+    var r = localStorage.getItem('geogive_ratings_' + userId);
+    return r ? JSON.parse(r) : [];
+  } catch(e) { return []; }
+}
+
+function getGiveawaysCompleted(userId) {
+  var items = window.state.items.filter(function(i) { return i.ownerId === userId && i.status === 'given'; });
+  return items.length;
+}
+
+function getResponseRate(userId) {
+  var totalReqs = window.state.requests.filter(function(r) { return r.ownerId === userId && r.status !== 'pending'; });
+  var allReqs = window.state.requests.filter(function(r) { return r.ownerId === userId; });
+  if (allReqs.length === 0) return 0.5; // Neutral
+  return totalReqs.length / allReqs.length;
+}
+
 function daysUntilExpiry(item) {
   var createdAt = item.createdAt || (item.created_at ? new Date(item.created_at).getTime() : Date.now());
   var expiresAt = item.expiresAt || (item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000));

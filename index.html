@@ -7,6 +7,16 @@
 <meta name="theme-color" content="#2d8a4e">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: tile.openstreetmap.org *.tile.openstreetmap.org *.cloudfront.net; font-src 'self' https://unpkg.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co tile.openstreetmap.org https://*.firebaseapp.com https://*.googleapis.com wss://*.firebaseio.com https://unpkg.com;">
 <title>GeoGive - Give Items Away Locally</title>
+<meta property="og:title" content="GeoGive - Free Stuff Near You">
+<meta property="og:description" content="Give away items to people nearby. Free, local, sustainable.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gandzekas.github.io/geogive/">
+<meta property="og:image" content="https://gandzekas.github.io/geogive/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GeoGive - Free Stuff Near You">
+<meta name="twitter:description" content="Give away items to people nearby. Free, local, sustainable.">
+<meta name="twitter:image" content="https://gandzekas.github.io/geogive/icon-512.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"GeoGive","description":"Give away items to people nearby","url":"https://gandzekas.github.io/geogive/","applicationCategory":"LifestyleApplication","operatingSystem":"Android","offers":{"@type":"Offer","price":"0"}}</script>
 <link rel="stylesheet" href="css/variables.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/layout.css">
@@ -299,6 +309,29 @@
 </div>
 
 <!-- Load Supabase SDK first, then all app scripts in order -->
+
+<!-- Community Guidelines Modal (M27) -->
+<div class="modal-overlay hidden" id="guidelinesModalOverlay">
+  <div class="form-card modal-sm">
+    <h3 class="section-title">� Community Guidelines</h3>
+    <div class="safety-box">
+      <h4>Be Kind & Respectful</h4>
+      <ul class="safety-list" style="padding-left:18px">
+        <li>Treat everyone with respect — no harassment or hate speech</li>
+        <li>Only list items you actually own and are giving away for free</li>
+        <li>Be honest about item condition</li>
+        <li>Respond to requests in a timely manner</li>
+        <li>Meet in safe, public places for exchanges</li>
+        <li>Report inappropriate content or behavior</li>
+      </ul>
+    </div>
+    <label class="safety-label">
+      <input type="checkbox" id="guidelinesAcknowledged" data-fn="closeGuidelinesModal">
+      I agree to follow these guidelines
+    </label>
+    <button class="btn btn-secondary btn-full" data-fn="closeModal" data-arg="guidelinesModalOverlay" type="button">Close</button>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js?v=1780571000"></script>
