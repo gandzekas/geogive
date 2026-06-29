@@ -102,7 +102,7 @@ function openItemDetail(itemId) {
   body += '<p style="font-size:0.85rem;color:#666;margin-bottom:16px">Listed by <strong>' + escHtml(item.ownerName || 'Anonymous') + '</strong> · ' + timeAgo(item.createdAt) + '</p>';
 
   if (!isOwn && item.status === 'available' && !expired) {
-    body += '<button class="btn btn-primary" style="width:100%;padding:12px;font-size:1rem" data-fn="closeModal" data-arg="itemModalOverlay">🎁 I\'ll Take It</button>';
+    body += '<button class="btn btn-primary" style="width:100%;padding:12px;font-size:1rem" data-fn="requestItem" data-arg-expr="escJs(item.id)" data-closemodal="itemModalOverlay">🎁 I\'ll Take It</button>';
     body += '<button class="btn btn-secondary" style="width:100%;padding:12px;font-size:1rem;margin-top:8px" data-fn="shareItem" data-arg-expr="escJs(item.id)">📤 Share</button>';
     body += '<button class="btn btn-secondary" style="width:100%;padding:12px;font-size:1rem;margin-top:8px" data-fn="closeModal" data-arg="itemModalOverlay">🚩 Report</button>';
   } else if (expired && isOwn) {

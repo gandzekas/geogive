@@ -273,16 +273,6 @@ function isValidEmail(email) {
   return true;
 }
 
-function isValidEmail(email) {
-  if (!email || typeof email !== 'string') return false;
-  var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!re.test(email)) return false;
-  if (email.length > 254) return false;
-  var parts = email.split('@');
-  if (parts[0].length > 64) return false;
-  return true;
-}
-
 // ===== ANALYTICS =====
 function trackEvent(eventName, params) {
   try {
@@ -316,6 +306,55 @@ function trackViewedItem(itemId) {
     if (viewed.length > 20) viewed = viewed.slice(0, 20);
     localStorage.setItem('geogive_viewed', JSON.stringify(viewed));
   } catch(e) {}
+}
+
+// ===== ANALYTICS DASHBOARD =====
+function renderAnalyticsDashboard() {
+  try {
+    var events = JSON.parse(localStorage.getItem('geogive_analytics') || '[]');
+    var sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    var lastWeekEvents = events.filter(function(e) { return e.timestamp >= sevenDaysAgo; });
+
+    // Count by type
+    var pageViews = events.filter(function(e) { return e.event === 'page_view'; }).length;
+    var itemsPosted = events.filter(function(e) { return e.event === 'item_posted'; }).length;
+    var requestsSent = events.filter(function(e) { return e.event === 'request_sent'; }).length;
+    var signIns = events.filter(function(e) { return e.event === 'user_signed_in'; }).length;
+
+    // Most active day in last 7 days
+    var dayCounts = {};
+    lastWeekEvents.forEach(function(e) {
+      var d = new Date(e.timestamp);
+      var dayKey = d.toLocaleDateString('en-US', { weekday: 'short' });
+      dayCounts[dayKey] = (dayCounts[dayKey] || 0) + 1;
+    });
+    var mostActive = '—';
+    var maxCount = 0;
+    Object.keys(dayCounts).forEach(function(day) {
+      if (dayCounts[day] > maxCount) { maxCount = dayCounts[day]; mostActive = day + ' (' + maxCount + ')'; }
+    });
+
+    // Update DOM
+    var set = function(id, val) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+    set('analyticsTotal', events.length);
+    set('analyticsPageViews', pageViews);
+    set('analyticsItemsPosted', itemsPosted);
+    set('analyticsRequests', requestsSent);
+    set('analyticsSignIns', signIns);
+    set('analyticsLastWeek', lastWeekEvents.length);
+    set('analyticsMostActive', mostActive);
+  } catch(e) { log('renderAnalyticsDashboard error:', e); }
+}
+
+function clearAnalyticsData() {
+  try {
+    localStorage.removeItem('geogive_analytics');
+    renderAnalyticsDashboard();
+    showToast('Analytics data cleared.');
+  } catch(e) { showToast('Failed to clear data.'); }
 }
 
 function daysUntilExpiry(item) {

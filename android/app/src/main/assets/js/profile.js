@@ -171,6 +171,8 @@ function toggleBlockUser(userId) {
   if (isUserBlocked(userId)) {
     window.state.blockedUsers = window.state.blockedUsers.filter(function(id) { return id !== userId; });
     showToast('User unblocked.');
+    localStorage.setItem('geogive_blocked', JSON.stringify(window.state.blockedUsers));
+    applyFilters();
   } else {
     confirmAction('Block this user? You will no longer see their items or messages.', function() {
       window.state.blockedUsers.push(userId);

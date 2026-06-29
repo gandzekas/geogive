@@ -144,8 +144,10 @@ async function loadItemsFromSupabase() {
 function loadItemsFromStorage() {
   try {
     var c = localStorage.getItem("geogive_items_cache");
-    window.state.items = c ? JSON.parse(c) : null;
-  } catch (e) {}
+    window.state.items = c ? JSON.parse(c) : [];
+  } catch (e) {
+    window.state.items = [];
+  }
   if (!window.state.items || window.state.items.length === 0) seedData();
   recalculateDistances();
   applyFilters();

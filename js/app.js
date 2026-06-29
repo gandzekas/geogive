@@ -330,7 +330,9 @@ window.GeoGive = {
   switchPage: switchPage,
   openItemDetail: openItemDetail,
   trackEvent: trackEvent,
-  rateLimit: rateLimit
+  rateLimit: rateLimit,
+  renderAnalyticsDashboard: renderAnalyticsDashboard,
+  clearAnalyticsData: clearAnalyticsData
 };
 
 // ===== PWA INSTALL PROMPT =====

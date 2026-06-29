@@ -416,3 +416,14 @@
 /* Onboarding */
 .onboarding-dots { display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 16px; }
 .onboarding-title { margin-bottom: 12px; }
+
+/* Analytics Dashboard */
+.analytics-dashboard { margin: 8px 0; }
+.analytics-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #f0f0f0;
+}
+.analytics-row:last-child { border-bottom: none; }
+.analytics-label { font-size: 0.85rem; color: #666; }
+.analytics-value { font-size: 0.95rem; font-weight: 600; color: #333; }
+.analytics-dashboard .btn { margin-top: 8px; }

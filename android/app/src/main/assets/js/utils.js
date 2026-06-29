@@ -273,16 +273,6 @@ function isValidEmail(email) {
   return true;
 }
 
-function isValidEmail(email) {
-  if (!email || typeof email !== 'string') return false;
-  var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!re.test(email)) return false;
-  if (email.length > 254) return false;
-  var parts = email.split('@');
-  if (parts[0].length > 64) return false;
-  return true;
-}
-
 // ===== ANALYTICS =====
 function trackEvent(eventName, params) {
   try {

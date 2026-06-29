@@ -142,7 +142,7 @@ function renderImagePreviews() {
   if (!grid) return;
   var html = '';
   window.state.selectedImages.forEach(function(dataUrl, idx) {
-    html += '<div class="image-preview"><img src="' + dataUrl + '" alt="Photo ' + (idx + 1) + '"><button class="remove-btn" data-fn="removeImage" data-arg=" + idx + " aria-label="Remove photo ' + (idx + 1) + '">✕</button></div>';
+    html += '<div class="image-preview"><img src="' + dataUrl + '" alt="Photo ' + (idx + 1) + '"><button class="remove-btn" data-fn="removeImage" data-arg="' + idx + '" aria-label="Remove photo ' + (idx + 1) + '">✕</button></div>';
   });
   grid.innerHTML = html;
 }

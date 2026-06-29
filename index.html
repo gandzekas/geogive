@@ -160,6 +160,21 @@
       </div>
     </div>
     <div class="text-center mt-12"><button class="btn-link" data-fn="closeModal" data-arg="settingsModalOverlay" type="button">Close</button></div>
+    <hr class="mt-16 mb-12">
+    <h4 class="notif-title">📊 Your Activity (Private)</h4>
+    <p class="text-muted text-sm mb-8">All data stays on your device. No external tracking.</p>
+    <div id="analyticsDashboard" class="analytics-dashboard">
+      <div class="analytics-row"><span class="analytics-label">Total Events</span><span class="analytics-value" id="analyticsTotal">0</span></div>
+      <div class="analytics-row"><span class="analytics-label">Pages Viewed</span><span class="analytics-value" id="analyticsPageViews">0</span></div>
+      <div class="analytics-row"><span class="analytics-label">Items Posted</span><span class="analytics-value" id="analyticsItemsPosted">0</span></div>
+      <div class="analytics-row"><span class="analytics-label">Requests Sent</span><span class="analytics-value" id="analyticsRequests">0</span></div>
+      <div class="analytics-row"><span class="analytics-label">Sign-ins</span><span class="analytics-value" id="analyticsSignIns">0</span></div>
+      <div class="analytics-row"><span class="analytics-label">Last 7 Days</span><span class="analytics-value" id="analyticsLastWeek">0</span></div>
+      <div class="analytics-row"><span class="analytics-label">Most Active Day</span><span class="analytics-value" id="analyticsMostActive">—</span></div>
+    </div>
+    <div class="text-center mt-8">
+      <button class="btn btn-sm btn-danger" data-fn="clearAnalyticsData" type="button">Clear All Data</button>
+    </div>
   </div>
 </div>
 
