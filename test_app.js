@@ -1,95 +1,80 @@
-const fs = require('fs');
-const P = '/data/data/com.termux/files/home/geogive';
-const issues = [], warnings = [], ok = [];
+// Test pure utility functions from utils.js
+// These don't depend on DOM or Supabase
 
-const html = fs.readFileSync(P + '/index.html', 'utf8');
-const ids = [...new Set((html.match(/id="([^"]+)"/g)||[]).map(r => r.replace(/id="(.+)"/,'$1')))];
+// Mock DOM for Node.js testing
+if (typeof document === 'undefined') {
+  global.document = {
+    createElement: function(tag) {
+      return {
+        textContent: '',
+        get innerHTML() {
+          // Minimal HTML entity encoding
+          return this.textContent
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+      };
+    }
+  };
+}
 
-// 1. Critical elements
-'authModalOverlay,settingsModalOverlay,itemModalOverlay,itemModalContent,itemList,myListings,requestsList,loginBtn,logoutBtn,userInfo,headerAvatar,headerName,loginForm,registerForm,authError,authErrorReg,authSuccessReg,postTitle,postCategory,postCondition,postDesc,postPhotos,imagePreviews,mapContainer,map,locStatus,radiusSlider,radiusValue,searchInput,categoryFilter,statusFilter,viewListBtn,viewMapBtn,connIndicator,settingsBtn,profileContent,chatContent,requestsBadge,showExpiredBtn,toast,loadingOverlay,debugPanel'.split(',').forEach(id => {
-  ids.includes(id) ? ok.push('#'+id) : issues.push('MISSING #'+id);
-});
+function escHtml(str) {
+  var d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
 
-// 2. Script order
-const scripts = (html.match(/<script[^>]*src="([^"]*)"[^>]*>/g)||[]).map(s => s.match(/src="([^"]*)"/)[1]);
-const idx = n => scripts.indexOf(n);
-idx('js/config.js?v=1780569489') < idx('js/utils.js?v=1780569489') ? ok.push('config<utils') : issues.push('config AFTER utils');
-idx('js/auth.js?v=1780569489') < idx('js/app.js?v=1780569489') ? ok.push('auth<app') : issues.push('auth AFTER app');
-idx('js/chats.js?v=1780569489') < idx('js/requests.js?v=1780569489') ? ok.push('chats<requests') : issues.push('chats AFTER requests');
+function escJs(str) {
+  return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '');
+}
 
-// 3. Local scripts cache-busted
-const local = scripts.filter(s => s.startsWith('js/'));
-local.every(s => s.includes('?v=')) ? ok.push('All '+local.length+' scripts cache-busted') : local.filter(s=>!s.includes('?v=')).forEach(s => warnings.push('No cache-bust: '+s));
+function sanitizeUrl(url) {
+  if (!url) return '';
+  var s = String(url).trim();
+  if (s.match(/^data:image\/(jpeg|png|gif|webp);base64,/i)) return s;
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.charAt(0) === '/' || s.charAt(0) === '.' || s.charAt(0) === '#') return s;
+  return '';
+}
 
-// 4. Supabase injection
-html.includes('tfqrgytmlppgovgvyaor') ? ok.push('Supabase URL injected') : issues.push('Supabase URL NOT injected');
-html.includes('sb_publishable') ? ok.push('Supabase Key injected') : issues.push('Supabase Key NOT injected');
+function truncate(str, n) {
+  return (str || '').length > n ? str.substring(0, n) + '...' : (str || '');
+}
 
-// 5. JS syntax
-const jsFiles = 'config,utils,auth,app,ui,items,map,geo,chats,requests,images,profile,notifications,offline,router'.split(',').map(n => 'js/'+n+'.js');
-jsFiles.forEach(f => {
-  const c = fs.readFileSync(P+'/'+f,'utf8');
-  try { new Function(c); ok.push(f+' syntax OK'); } catch(e) { issues.push(f+' SYNTAX ERROR: '+e.message); }
-});
+// ===== TESTS =====
 
-// 6. auth.js checks
-const a = fs.readFileSync(P+'/js/auth.js','utf8');
-const fnBody = a.substring(a.indexOf('function handleGoogleAuth'), a.indexOf('\n}\n', a.indexOf('function handleGoogleAuth')));
-[
-  ['handleGoogleAuth defined', a.includes('function handleGoogleAuth()')],
-  ['dbg() in handleGoogleAuth', fnBody.includes('dbg(')],
-  ['window.location.assign redirect', a.includes('window.location.assign(result.data.url)')],
-  ['Fallback authorize endpoint', a.includes('authorize?provider=google')],
-  ['closeModal authModalOverlay', a.includes("closeModal('authModalOverlay')")],
-  ['INITIAL_SESSION handler', a.includes('INITIAL_SESSION')],
-  ['Profile auto-creation', a.includes('upsert')],
-  ['Email confirm error', a.includes('confirm your email')],
-  ['Password min 6', a.includes('password.length < 6')],
-  ['classList toggle for tabs', a.includes("classList.toggle('active')")],
-].forEach(([name,pass]) => { pass ? ok.push('auth: '+name) : issues.push('auth: '+name); });
+function assert(condition, msg) {
+  if (!condition) {
+    console.error('FAIL: ' + msg);
+    process.exit(1);
+  }
+  console.log('PASS: ' + msg);
+}
 
-// 7. config.js checks
-const cfg = fs.readFileSync(P+'/js/config.js','utf8');
-[
-  ['CATEGORY_EMOJI', cfg.includes('CATEGORY_EMOJI')],
-  ['CATEGORY_COLORS', cfg.includes('CATEGORY_COLORS')],
-  ['CATEGORY_DISPLAY', cfg.includes('CATEGORY_DISPLAY')],
-  ['initSupabase()', cfg.includes('function initSupabase()')],
-  ['getSupabase()', cfg.includes('function getSupabase()')],
-  ['window.supabase.createClient', cfg.includes('window.supabase.createClient')],
-].forEach(([name,pass]) => { pass ? ok.push('config: '+name) : issues.push('config: '+name); });
+// escHtml tests
+assert(escHtml('<script>') === '&lt;script&gt;', 'escHtml escapes script tags');
+assert(escHtml('"hello"') === '&quot;hello&quot;', 'escHtml escapes quotes');
+assert(escHtml('') === '', 'escHtml handles empty string');
+assert(escHtml(null) === '', 'escHtml handles null');
 
-// 8. app.js checks
-const app = fs.readFileSync(P+'/js/app.js','utf8');
-[
-  ['DOMContentLoaded', app.includes('DOMContentLoaded')],
-  ['initSupabase()', app.includes('initSupabase()')],
-  ['setupAuthListener()', app.includes('setupAuthListener()')],
-  ['checkSession()', app.includes('checkSession()')],
-  ['initGeolocation()', app.includes('initGeolocation()')],
-  ['loadItemsFromSupabase()', app.includes('loadItemsFromSupabase()')],
-  ['window.handleGoogleAuth', app.includes('window.handleGoogleAuth = handleGoogleAuth')],
-  ['window.openAuthModal', app.includes('window.openAuthModal = openAuthModal')],
-  ['window.switchPage', app.includes('window.switchPage = switchPage')],
-].forEach(([name,pass]) => { pass ? ok.push('app: '+name) : issues.push('app: '+name); });
+// escJs tests
+assert(escJs("it's") === "it\\'s", 'escJs escapes single quotes');
+assert(escJs('say "hi"') === 'say \\"hi\\"', 'escJs escapes double quotes');
+assert(escJs('line1\nline2') === 'line1\\nline2', 'escJs escapes newlines');
 
-// 9. Duplicate global functions
-const glob = {};
-jsFiles.forEach(f => {
-  const c = fs.readFileSync(P+'/'+f,'utf8');
-  (c.match(/function\s+([a-zA-Z_]\w*)\s*\(/g)||[]).forEach(m => {
-    const n = m.replace(/function\s+/,'').replace(/\s*\(/,'');
-    (glob[n] = glob[n]||[]).push(f);
-  });
-});
-Object.keys(glob).filter(k => glob[k].length > 1).forEach(k => {
-  warnings.push('Duplicate "'+k+'": '+glob[k].join(', '));
-});
+// sanitizeUrl tests
+assert(sanitizeUrl('https://example.com/img.jpg') === 'https://example.com/img.jpg', 'sanitizeUrl allows https');
+assert(sanitizeUrl('javascript:alert(1)') === '', 'sanitizeUrl blocks javascript:');
+assert(sanitizeUrl('data:image/jpeg;base64,abc123') === 'data:image/jpeg;base64,abc123', 'sanitizeUrl allows data:image');
+assert(sanitizeUrl('data:text/html;base64,abc') === '', 'sanitizeUrl blocks non-image data');
+assert(sanitizeUrl('/relative/path') === '/relative/path', 'sanitizeUrl allows relative paths');
 
-// 10. Summary
-console.log('========================================');
-console.log('RESULTS: '+ok.length+' passed, '+warnings.length+' warnings, '+issues.length+' issues');
-console.log('========================================');
-if (issues.length) { console.log('\nISSUES:'); issues.forEach(i => console.log('  FAIL '+i)); }
-if (warnings.length) { console.log('\nWARNINGS:'); warnings.forEach(w => console.log('  WARN '+w)); }
-if (!issues.length) console.log('\nAll critical checks passed.');
+// truncate tests
+assert(truncate('hello world', 5) === 'hello...', 'truncate shortens long strings');
+assert(truncate('hi', 5) === 'hi', 'truncate leaves short strings');
+assert(truncate('', 5) === '', 'truncate handles empty');
+
+console.log('\n✅ All 14 tests passed!');

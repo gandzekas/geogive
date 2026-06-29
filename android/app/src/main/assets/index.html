@@ -5,51 +5,61 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#2d8a4e">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: tile.openstreetmap.org *.tile.openstreetmap.org *.cloudfront.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co tile.openstreetmap.org https://*.firebaseapp.com https://*.googleapis.com wss://*.firebaseio.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: tile.openstreetmap.org *.tile.openstreetmap.org *.cloudfront.net; font-src 'self' https://unpkg.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co tile.openstreetmap.org https://*.firebaseapp.com https://*.googleapis.com wss://*.firebaseio.com https://unpkg.com;">
 <title>GeoGive - Give Items Away Locally</title>
 <link rel="stylesheet" href="css/variables.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/map.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" >
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" >
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" >
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 </head>
 <body>
 
-<!-- [Same HTML body as before] -->
+<!-- App Loading Splash -->
+<div id="appSplash" class="app-splash">
+  <div class="splash-icon">🎁</div>
+  <div class="splash-title">GeoGive</div>
+  <div class="splash-subtitle">Loading...</div>
+</div>
+
 <!-- HEADER -->
 <header>
   <h1><span>🎁</span> GeoGive</h1>
   <div class="header-right">
-    <div id="connIndicator" class="conn-indicator" style="display:none" title="Connection status"></div>
-    <div class="user-info" id="userInfo" style="display:none" onclick="if(window.switchPage)switchPage('profile')">
+    <div id="connIndicator" class="conn-indicator hidden" title="Connection status"></div>
+    <div class="user-info hidden" id="userInfo" data-fn="switchPage" data-arg="profile">
       <div class="user-avatar" id="headerAvatar"></div>
       <span id="headerName"></span>
     </div>
-    <button class="login-btn" id="loginBtn" onclick="openAuthModal()">Sign In</button>
-    <button class="logout-btn" id="logoutBtn" style="display:none" onclick="handleLogout()">Logout</button>
-    <button class="upgrade-btn" id="settingsBtn" title="Settings" onclick="openSettingsModal()">⚙️</button>
+    <button class="login-btn" id="loginBtn" data-fn="openAuthModal" type="button">Sign In</button>
+    <button class="logout-btn hidden" id="logoutBtn" data-fn="handleLogout" type="button">Logout</button>
+    <button class="upgrade-btn" id="settingsBtn" title="Settings" data-fn="openSettingsModal" type="button">⚙️</button>
   </div>
 </header>
+
 
 <!-- MAIN CONTENT -->
 <main>
   <div class="page active" id="page-browse">
     <div class="view-toggle">
-      <button class="active" id="viewListBtn" onclick="setView('list')">📋 List</button>
-      <button id="viewMapBtn" onclick="setView('map')">🗺️ Map</button>
+      <button class="active" id="viewListBtn" data-fn="setView" data-arg="list" type="button">📋 List</button>
+      <button id="viewMapBtn" data-fn="setView" data-arg="map" type="button">🗺️ Map</button>
     </div>
     <div id="mapContainer"><div id="map"></div></div>
     <div class="radius-bar">
       <label>📍 Radius:</label>
-      <input type="range" id="radiusSlider" min="1" max="100" value="10" oninput="updateRadiusLabel(this.value)">
-      <span class="radius-value" id="radiusValue">10 km</span>
+      <input type="range" id="radiusSlider" min="1" max="100" value="10" data-fn="updateRadiusLabel">
+      <span class="radius-value" id="radiusValue">10 mi</span>
     </div>
     <div class="loc-status pending" id="locStatus"><span>📡</span> Detecting your location...</div>
     <div class="filter-bar">
-      <input type="text" id="searchInput" placeholder="🔍 Search items..." oninput="debounceSearch()">
-      <select id="categoryFilter" onchange="applyFilters()">
+      <input type="text" id="searchInput" placeholder="🔍 Search items..." data-fn="debounceSearch">
+      <select id="categoryFilter" data-fn="applyFilters">
         <option value="">All Categories</option>
         <option value="furniture">🪑 Furniture</option>
         <option value="electronics">📱 Electronics</option>
@@ -61,7 +71,7 @@
         <option value="garden">🌱 Garden</option>
         <option value="other">📦 Other</option>
       </select>
-      <select id="statusFilter" onchange="applyFilters()">
+      <select id="statusFilter" data-fn="applyFilters">
         <option value="available">Available</option>
         <option value="all">All Status</option>
       </select>
@@ -71,25 +81,25 @@
 
   <div class="page" id="page-post">
     <div class="form-card">
-      <h2 style="margin-bottom:16px">📸 List an Item</h2>
-      <form id="postForm" onsubmit="handleListSubmit(event)">
+      <h2 class="section-title">📸 List an Item</h2>
+      <form id="postForm" data-fn="handleListSubmit">
         <div class="form-group"><label>Title *</label><input type="text" id="postTitle" required maxlength="100" placeholder="What are you giving away?"></div>
         <div class="form-group"><label>Category</label><select id="postCategory"><option value="furniture">🪑 Furniture</option><option value="electronics">📱 Electronics</option><option value="clothing">👕 Clothing</option><option value="books">📚 Books</option><option value="toys">🧸 Toys</option><option value="kitchen">🍳 Kitchen</option><option value="sports">⚽ Sports</option><option value="garden">🌱 Garden</option><option value="other" selected>📦 Other</option></select></div>
         <div class="form-group"><label>Condition</label><select id="postCondition"><option value="Like New">Like New</option><option value="Good" selected>Good</option><option value="Fair">Fair</option><option value="Needs Repair">Needs Repair</option></select></div>
         <div class="form-group"><label>Description</label><textarea id="postDesc" placeholder="Describe the item..."></textarea></div>
-        <div class="form-group"><label>Photos (max 5)</label><input type="file" id="postPhotos" accept="image/*" multiple onchange="handleImageSelect(event)"><div id="imagePreviews" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div></div>
+        <div class="form-group"><label>Photos (max 5)</label><input type="file" id="postPhotos" accept="image/*" multiple data-fn="handleImageSelect"><div id="imagePreviews" class="image-previews"></div></div>
         <button type="submit" class="btn btn-primary btn-full">🎁 Post Item</button>
       </form>
     </div>
   </div>
 
   <div class="page" id="page-mylistings">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2>📦 My Listings</h2><button class="btn btn-sm btn-secondary" id="showExpiredBtn" onclick="toggleShowExpired()">Show Expired</button></div>
+    <div class="list-header"><h2>📦 My Listings</h2><button class="btn btn-sm btn-secondary" id="showExpiredBtn" data-fn="toggleShowExpired" type="button">Show Expired</button></div>
     <div id="myListings"></div>
   </div>
 
   <div class="page" id="page-requests">
-    <h2 style="margin-bottom:12px">📨 Requests</h2>
+    <h2 class="section-title">📨 Requests</h2>
     <div id="requestsList"></div>
   </div>
 
@@ -98,70 +108,191 @@
 </main>
 
 <nav class="bottom-nav">
-  <button class="nav-tab active" data-page="browse" onclick="switchPage('browse')"><span class="nav-icon">🗺️</span> Browse</button>
-  <button class="nav-tab" data-page="post" onclick="switchPage('post')"><span class="nav-icon">➕</span> Post</button>
-  <button class="nav-tab" data-page="mylistings" onclick="switchPage('mylistings')"><span class="nav-icon">📦</span> My Listings</button>
-  <button class="nav-tab" data-page="requests" onclick="switchPage('requests')" id="requestsTab"><span class="nav-icon">📨</span> Requests <span class="notif-badge" id="requestsBadge" style="display:none">0</span></button>
+  <button class="nav-tab active" data-page="browse" data-fn="switchPage" data-arg="browse" type="button"><span class="nav-icon">🗺️</span> Browse</button>
+  <button class="nav-tab" data-page="post" data-fn="switchPage" data-arg="post" type="button"><span class="nav-icon">➕</span> Post</button>
+  <button class="nav-tab" data-page="mylistings" data-fn="switchPage" data-arg="mylistings" type="button"><span class="nav-icon">📦</span> My Listings</button>
+  <button class="nav-tab" data-page="requests" data-fn="switchPage" data-arg="requests" id="requestsTab" type="button"><span class="nav-icon">📨</span> Requests <span class="notif-badge hidden" id="requestsBadge">0</span></button>
 </nav>
 
 <div id="toast" class="toast"></div>
-<div id="loadingOverlay" class="modal-overlay" style="display:none;align-items:center;justify-content:center"><div style="background:white;padding:24px;border-radius:12px;text-align:center"><div style="font-size:2rem;margin-bottom:8px">⏳</div><div id="loadingText">Loading...</div></div></div>
+<div id="loadingOverlay" class="modal-overlay loading-overlay">
+  <div class="loading-box">
+    <div class="loading-icon">⏳</div>
+    <div id="loadingText">Loading...</div>
+  </div>
+</div>
 
 <!-- Auth Modal -->
-<div class="modal-overlay" id="authModalOverlay" style="display:none">
-  <div class="form-card" style="max-width:400px;width:100%">
-    <div style="display:flex;border-bottom:1px solid var(--gray-200);margin-bottom:16px">
-      <button class="auth-tab active" style="flex:1;padding:10px;background:none;border:none;font-weight:600" data-tab="login" onclick="switchAuthTab('login')">Sign In</button>
-      <button class="auth-tab" style="flex:1;padding:10px;background:none;border:none;color:var(--gray-400)" data-tab="register" onclick="switchAuthTab('register')">Register</button>
+<div class="modal-overlay hidden" id="authModalOverlay">
+  <div class="form-card modal-sm">
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login" data-fn="switchAuthTab" data-arg="login" type="button">Sign In</button>
+      <button class="auth-tab" data-tab="register" data-fn="switchAuthTab" data-arg="register" type="button">Register</button>
     </div>
-    <form class="auth-form" id="loginForm" onsubmit="handleEmailAuth(event)"><div class="form-group"><label>Email</label><input type="email" id="loginEmail" required></div><div class="form-group"><label>Password</label><input type="password" id="loginPassword" required></div><div id="authError" style="color:red;font-size:0.85rem;margin-bottom:8px;display:none"></div><button type="submit" class="btn btn-primary btn-full">Sign In</button></form>
-    <form class="auth-form" id="registerForm" style="display:none" onsubmit="handleEmailAuth(event)"><div class="form-group"><label>Email</label><input type="email" id="registerEmail" required></div><div class="form-group"><label>Password</label><input type="password" id="registerPassword" required minlength="6"></div><div id="authErrorReg" style="color:red;font-size:0.85rem;margin-bottom:8px;display:none"></div><button type="submit" class="btn btn-primary btn-full">Register</button></form>
-    <div style="text-align:center;margin:12px 0;color:var(--gray-400)">— or —</div>
-    <button class="btn btn-secondary btn-full" onclick="handleGoogleAuth()">🔵 Continue with Google</button>
-    <div style="text-align:center;margin-top:12px"><button style="background:none;border:none;color:var(--gray-400);font-size:0.8rem;cursor:pointer" onclick="closeModal('authModalOverlay')">Close</button></div>
+    <button class="btn btn-secondary btn-full" type="button" data-fn="handleGoogleAuth">Continue with Google</button>
+    <form class="auth-form active" id="loginForm" data-fn="handleEmailAuth"><div class="form-group"><label>Email</label><input type="email" id="loginEmail" required></div><div class="form-group"><label>Password</label><input type="password" id="loginPassword" required></div><div id="authError" class="error-text hidden"></div><button type="submit" class="btn btn-primary btn-full">Sign In</button></form>
+    <form class="auth-form" id="registerForm" data-fn="handleEmailAuth"><div class="form-group"><label>Email</label><input type="email" id="registerEmail" required></div><div class="form-group"><label>Password</label><input type="password" id="registerPassword" required minlength="8" placeholder="Min 8 chars, 1 uppercase, 1 number"></div><div id="authErrorReg" class="error-text hidden"></div><div id="authSuccessReg" class="success-text hidden"></div><button type="submit" class="btn btn-primary btn-full">Register</button></form>
+    <div class="text-center mt-12"><button class="btn-link" data-fn="closeModal" data-arg="authModalOverlay" type="button">Close</button></div>
   </div>
 </div>
 
 <!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModalOverlay" style="display:none">
-  <div class="form-card" style="max-width:400px;width:100%">
-    <h3 style="margin-bottom:16px">⚙️ Settings</h3>
+<div class="modal-overlay hidden" id="settingsModalOverlay">
+  <div class="form-card modal-sm">
+    <h3 class="section-title">⚙️ Settings</h3>
     <div class="form-group"><label>Supabase URL</label><input type="text" id="settingsSbUrl" placeholder="https://your-project.supabase.co"></div>
     <div class="form-group"><label>Supabase Anon Key</label><input type="text" id="settingsSbKey" placeholder="your-anon-key"></div>
-    <div id="settingsError" style="color:red;font-size:0.85rem;margin-bottom:8px;display:none"></div>
-    <button class="btn btn-primary btn-full" onclick="saveSettings()">Save & Connect</button>
-    <div style="text-align:center;margin-top:12px"><button style="background:none;border:none;color:var(--gray-400);font-size:0.8rem;cursor:pointer" onclick="closeModal('settingsModalOverlay')">Close</button></div>
+    <div id="settingsError" class="error-text hidden"></div>
+    <button class="btn btn-primary btn-full" data-fn="saveSettings" type="button">Save &amp; Connect</button>
+    <div class="notif-section">
+      <h4 class="notif-title">🔔 Notifications</h4>
+      <div class="notif-toggle-row">
+        <span class="label">New Messages</span>
+        <span class="toggle-switch on" id="toggleMessages" data-fn="toggleNotifPref" data-arg="messages"></span>
+      </div>
+      <div class="notif-toggle-row">
+        <span class="label">Nearby Items</span>
+        <span class="toggle-switch on" id="toggleNearby" data-fn="toggleNotifPref" data-arg="nearby"></span>
+      </div>
+      <div class="notif-toggle-row">
+        <span class="label">Request Updates</span>
+        <span class="toggle-switch on" id="toggleRequests" data-fn="toggleNotifPref" data-arg="requests"></span>
+      </div>
+    </div>
+    <div class="text-center mt-12"><button class="btn-link" data-fn="closeModal" data-arg="settingsModalOverlay" type="button">Close</button></div>
   </div>
 </div>
 
 <!-- Item Detail Modal -->
-<div class="modal-overlay" id="itemModalOverlay" style="display:none">
-  <div id="itemModalContent" style="background:white;border-radius:var(--radius);max-width:500px;width:100%;max-height:90vh;overflow-y:auto"></div>
+<div class="modal-overlay hidden" id="itemModalOverlay">
+  <div id="itemModalContent" class="item-modal-content"></div>
+</div>
+
+<!-- Report Modal -->
+<div class="modal-overlay hidden" id="reportModalOverlay">
+  <div class="form-card modal-sm">
+    <h3 class="section-title">🚩 Report User / Item</h3>
+    <div class="form-group">
+      <label>Reason</label>
+      <select id="reportReason">
+        <option value="spam">Spam / Scam</option>
+        <option value="inappropriate">Inappropriate Content</option>
+        <option value="fake">Fake Listing</option>
+        <option value="harassment">Harassment</option>
+        <option value="safety">Safety Concern</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Details (optional)</label>
+      <textarea id="reportDetails" placeholder="Add any additional context..."></textarea>
+    </div>
+    <div id="reportError" class="error-text hidden"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" data-fn="submitReport" type="button">Submit Report</button>
+      <button class="btn btn-secondary btn-full" data-fn="closeModal" data-arg="reportModalOverlay" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rating Modal -->
+<div class="modal-overlay hidden" id="ratingModalOverlay">
+  <div class="form-card modal-sm">
+    <h3 class="section-title">⭐ Rate Your Experience</h3>
+    <p class="text-muted">How was your experience with this transaction?</p>
+    <div class="form-group">
+      <label>Rating</label>
+      <div id="ratingStars" class="rating-stars">
+        <span data-rating="1">☆</span>
+        <span data-rating="2">☆</span>
+        <span data-rating="3">☆</span>
+        <span data-rating="4">☆</span>
+        <span data-rating="5">☆</span>
+      </div>
+      <input type="hidden" id="ratingValue" value="0">
+    </div>
+    <div class="form-group">
+      <label>Comment (optional)</label>
+      <textarea id="ratingComment" placeholder="Add a comment..."></textarea>
+    </div>
+    <div id="ratingError" class="error-text hidden"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" data-fn="submitRating" type="button">Submit Rating</button>
+      <button class="btn btn-secondary btn-full" data-fn="closeModal" data-arg="ratingModalOverlay" type="button">Skip</button>
+    </div>
+  </div>
+</div>
+
+<!-- Safety Tips Modal -->
+<div class="modal-overlay hidden" id="safetyModalOverlay">
+  <div class="form-card modal-sm">
+    <h3 class="section-title">🛡️ Safety Tips</h3>
+    <div class="safety-box">
+      <p class="safety-heading">Before meeting up:</p>
+      <ul class="safety-list">
+        <li>Meet in a <strong>public place</strong> (cafe, park, mall)</li>
+        <li>Bring a <strong>friend</strong> if possible</li>
+        <li>Tell someone where you're going</li>
+        <li><strong>Don't</strong> share your home address</li>
+        <li>Inspect items before taking them</li>
+        <li>Report suspicious behavior immediately</li>
+      </ul>
+    </div>
+    <label class="safety-label">
+      <input type="checkbox" id="safetyAcknowledged" data-fn="closeSafetyModal">
+      I understand these safety tips
+    </label>
+    <button class="btn btn-secondary btn-full" data-fn="closeModal" data-arg="safetyModalOverlay" type="button">Close</button>
+  </div>
+</div>
+
+<!-- Onboarding Modal -->
+<div class="modal-overlay hidden" id="onboardingModalOverlay">
+  <div class="form-card modal-sm text-center">
+    <div id="onboardingStep1" class="onboarding-step">
+      <div class="splash-icon">🗺️</div>
+      <h3 class="onboarding-title">Browse Free Items</h3>
+      <p class="text-muted">Discover items people are giving away near you. Use the map or list view to explore.</p>
+    </div>
+    <div id="onboardingStep2" class="onboarding-step hidden">
+      <div class="splash-icon">📸</div>
+      <h3 class="onboarding-title">Post Items</h3>
+      <p class="text-muted">Take photos, add details, and list items you no longer need. It takes 30 seconds.</p>
+    </div>
+    <div id="onboardingStep3" class="onboarding-step hidden">
+      <div class="splash-icon">💬</div>
+      <h3 class="onboarding-title">Chat & Arrange</h3>
+      <p class="text-muted">Request items, chat with the giver, and arrange a pickup. It's that simple!</p>
+    </div>
+    <div class="onboarding-dots">
+      <span class="onboarding-dot active" id="dot1"></span>
+      <span class="onboarding-dot" id="dot2"></span>
+      <span class="onboarding-dot" id="dot3"></span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary btn-full" data-fn="skipOnboarding" type="button">Skip</button>
+      <button class="btn btn-primary btn-full" id="onboardingNextBtn" data-fn="nextOnboardingStep" type="button">Next</button>
+    </div>
+  </div>
 </div>
 
 <!-- Load Supabase SDK first, then all app scripts in order -->
 
-<!-- INJECT_SUPABASE: Auto-configure Supabase credentials -->
-<script>
-localStorage.setItem('geogive_sb_url', 'https://tfqrgytmlppgovgvyaor.supabase.co');
-localStorage.setItem('geogive_sb_key', 'sb_publishable_wvjyaHFmPOIGotNIGqzjvw_ClmJbahz');
-</script>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/geo.js"></script>
-<script src="js/map.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/items.js"></script>
-<script src="js/chats.js"></script>
-<script src="js/requests.js"></script>
-<script src="js/images.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/profile.js"></script>
-<script src="js/notifications.js"></script>
-<script src="js/offline.js"></script>
-<script src="js/router.js"></script>
-<script src="js/app.js"></script>
+<script src="js/config.js?v=1780571000"></script>
+<script src="js/utils.js?v=1780571000"></script>
+<script src="js/geo.js?v=1780571000"></script>
+<script src="js/map.js?v=1780571000"></script>
+<script src="js/auth.js?v=1780571000"></script>
+<script src="js/items.js?v=1780571000"></script>
+<script src="js/chats.js?v=1780571000"></script>
+<script src="js/requests.js?v=1780571000"></script>
+<script src="js/images.js?v=1780571000"></script>
+<script src="js/ui.js?v=1780571000"></script>
+<script src="js/profile.js?v=1780571000"></script>
+<script src="js/notifications.js?v=1780571000"></script>
+<script src="js/offline.js?v=1780571000"></script>
+<script src="js/router.js?v=1780571000"></script>
+<script src="js/app.js?v=1780571000"></script>
 </body>
 </html>

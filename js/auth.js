@@ -1,35 +1,16 @@
 // ===== AUTHENTICATION =====
 
-// ===== DEBUG LOGGING =====
-function dbg(msg) {
-  try {
-    var panel = document.getElementById('debugPanel');
-    if (panel) {
-      var line = document.createElement('div');
-      line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
-      panel.appendChild(line);
-      if (panel.children.length > 10) panel.removeChild(panel.firstChild);
-    }
-  } catch(e) {}
-  console.log('[GeoGive]', msg);
-}
-
 function setupAuthListener() {
   var sb = getSupabase();
-  if (!sb) { dbg('setupAuthListener: no supabase client'); return; }
-  dbg('setupAuthListener: OK');
-  var { data: { subscription } } = sb.auth.onAuthStateChanged(async function(event, session) {
-    dbg('auth event: ' + event + ' session=' + (session ? 'yes' : 'no'));
+  if (!sb) return;
+  var { data: { subscription } } = sb.auth.onAuthStateChange(async function(event, session) {
     if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
       if (session) {
         window.state.session = session;
         window.state.user = session.user;
-        dbg('user: ' + session.user.email);
         await loadUserData();
         updateAuthUI();
         await loadItemsFromSupabase();
-      } else {
-        dbg('event=' + event + ' but no session');
       }
     } else if (event === 'SIGNED_OUT') {
       window.state.session = null;
@@ -43,24 +24,33 @@ function setupAuthListener() {
 
 async function checkSession() {
   var sb = getSupabase();
-  if (!sb) { dbg('checkSession: no supabase client'); return; }
+  if (!sb) return;
 
   var hash = window.location.hash || '';
   var params = new URLSearchParams(window.location.search || '');
   var hasAuthData = hash.includes('access_token') || hash.includes('error') || params.has('code') || params.has('error');
-  dbg('checkSession: hash=' + hash.substring(0,80) + ' hasAuthData=' + hasAuthData);
 
-  // If URL has hash fragment with auth data, let Supabase process it
+  // Verify CSRF nonce from OAuth callback
+  if (params.has('state')) {
+    if (!verifyNonce(params.get('state'))) {
+      showToast('Security verification failed. Please try signing in again.');
+      return;
+    }
+  }
+
+  if (params.has('error') || hash.includes('error')) {
+    var errorDesc = params.get('error_description') || params.get('error') || 'Authentication failed';
+    try { errorDesc = decodeURIComponent(errorDesc); } catch(e) {}
+    showToast('Sign-in error: ' + errorDesc);
+    setTrackedTimeout(function() { history.replaceState(null, '', window.location.pathname); }, 3000);
+    return;
+  }
+
   if (hasAuthData) {
-    dbg('checkSession: URL has auth data, exchanging for session...');
     try {
-      // Supabase v2 can exchange hash tokens for a session
-      var { data, error } = await sb.auth.getSession();
+      var { data, error } = await withRetry(function() { return sb.auth.getSession(); }, { maxAttempts: 2, baseDelay: 1000 });
       if (error) {
-        dbg('checkSession: getSession error: ' + error.message);
-        // Try exchanging the hash fragment directly
         if (hash.includes('access_token')) {
-          dbg('checkSession: attempting hash exchange...');
           var hashParams = new URLSearchParams(hash.substring(1));
           var accessToken = hashParams.get('access_token');
           var refreshToken = hashParams.get('refresh_token');
@@ -69,53 +59,45 @@ async function checkSession() {
               access_token: accessToken,
               refresh_token: refreshToken || ''
             });
-            if (sessErr) {
-              dbg('checkSession: setSession error: ' + sessErr.message);
-            } else if (sessData && sessData.session) {
-              dbg('checkSession: setSession SUCCESS for ' + sessData.session.user.email);
+            if (!sessErr && sessData && sessData.session) {
               window.state.session = sessData.session;
               window.state.user = sessData.session.user;
               await loadUserData();
               updateAuthUI();
-              // Clean up URL
               history.replaceState(null, '', window.location.pathname);
               showToast('Signed in! 🎉');
+      trackEvent('user_signed_in');
               return;
             }
           }
         }
       }
       if (data && data.session) {
-        dbg('checkSession: got session for ' + data.session.user.email);
         window.state.session = data.session;
         window.state.user = data.session.user;
         await loadUserData();
         updateAuthUI();
         history.replaceState(null, '', window.location.pathname);
         showToast('Signed in! 🎉');
+      trackEvent('user_signed_in');
         return;
       }
     } catch(e) {
-      dbg('checkSession: exception: ' + e.message);
+      console.warn('checkSession error:', e);
     }
-    // Clean up URL even on failure
-    setTimeout(function() { history.replaceState(null, '', window.location.pathname); }, 1000);
+    setTrackedTimeout(function() { history.replaceState(null, '', window.location.pathname); }, 3000);
   } else {
-    // No hash — just check for existing session
     try {
-      var result = await sb.auth.getSession();
+      var result = await withRetry(function() { return sb.auth.getSession(); }, { maxAttempts: 2, baseDelay: 1000 });
       var session = result.data ? result.data.session : null;
       if (session) {
-        dbg('checkSession: existing session for ' + session.user.email);
         window.state.session = session;
         window.state.user = session.user;
         await loadUserData();
         updateAuthUI();
-      } else {
-        dbg('checkSession: no session');
       }
     } catch(e) {
-      dbg('checkSession exception: ' + e.message);
+      console.warn('checkSession error:', e);
     }
   }
 }
@@ -128,7 +110,6 @@ async function loadUserData() {
     if (profile) {
       window.state.userProfile = profile;
     } else {
-      // Auto-create profile for new users (e.g., Google sign-in)
       var email = window.state.user.email || '';
       var name = email.split('@')[0] || 'User';
       try {
@@ -140,12 +121,10 @@ async function loadUserData() {
           window.state.userProfile = created;
         }
       } catch(profileErr) {
-        // RLS may block insert — that's OK, use fallback
         console.warn('Profile auto-create failed:', profileErr);
       }
     }
   } catch(e) {
-    // Profile operations failed — use fallback
     console.warn('loadUserData error:', e);
   }
   updateAuthUI();
@@ -163,7 +142,9 @@ function updateAuthUI() {
     if (logoutBtn) logoutBtn.style.display = '';
     if (userInfo) userInfo.style.display = '';
     var name = (window.state.userProfile && window.state.userProfile.display_name) || window.state.user.email.split('@')[0];
-    if (headerName) headerName.textContent = name;
+    var verified = window.state.user.email_confirmed_at || (window.state.userProfile && window.state.userProfile.verified);
+    if (headerName) headerName.textContent = name + (verified ? ' ✓' : '');
+    if (verified) headerName.style.color = 'var(--green)';
     if (headerAvatar) {
       if (window.state.userProfile && window.state.userProfile.avatar_url) {
         headerAvatar.innerHTML = '<img src="' + escHtml(window.state.userProfile.avatar_url) + '" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
@@ -214,22 +195,25 @@ function switchAuthTab(tab) {
 }
 
 async function handleGoogleAuth() {
-  dbg('handleGoogleAuth: clicked');
   var sb = getSupabase();
-  if (!sb) { dbg('handleGoogleAuth: no supabase client'); showAuthError('Supabase not connected. Check Settings.'); return; }
-  closeModal('authModalOverlay');
+  if (!sb) { showToast('Supabase not connected. Try again or refresh.'); return; }
+  if (!SUPABASE_URL) { showToast('Supabase URL is not configured.'); return; }
   var redirectUrl = window.location.origin + window.location.pathname;
-  dbg('handleGoogleAuth: redirectUrl=' + redirectUrl);
-  // Use direct authorize endpoint — signInWithOAuth can be unreliable on mobile web
-  var authUrl = 'https://tfqrgytmlppgovgvyaor.supabase.co/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl);
-  dbg('handleGoogleAuth: navigating to authorize endpoint');
-  window.location.href = authUrl;
+  var nonce = storeNonce();
+  var authUrl = SUPABASE_URL.replace(/\/$/, '') + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(redirectUrl) + '&state=' + encodeURIComponent(nonce);
+  closeModal('authModalOverlay');
+  showToast('Redirecting to Google...');
+  window.location.assign(authUrl);
 }
 
 window.handleGoogleAuth = handleGoogleAuth;
 
 async function handleEmailAuth(e) {
   e.preventDefault();
+  if (!rateLimit('auth_attempt', 3000)) {
+    showToast('Please wait before trying again.');
+    return;
+  }
   var sb = getSupabase();
   if (!sb) { showAuthError('Supabase not connected. Try again or refresh.'); return; }
 
@@ -241,58 +225,71 @@ async function handleEmailAuth(e) {
       var email = document.getElementById('loginEmail').value.trim();
       var password = document.getElementById('loginPassword').value;
       if (!email || !password) { showAuthError('Please enter both email and password.'); return; }
-      var { error } = await sb.auth.signInWithPassword({ email: email, password: password });
+      if (!isValidEmail(email)) { showAuthError('Please enter a valid email address.'); return; }
+      var { data, error } = await sb.auth.signInWithPassword({ email: email, password: password });
       if (error) {
-        if (error.message && error.message.toLowerCase().includes('confirm')) {
-          showAuthError('Please confirm your email first. Check your inbox for the confirmation link.');
-        } else if (error.message && error.message.toLowerCase().includes('invalid')) {
-          showAuthError('Invalid email or password. Please try again.');
-        } else {
-          showAuthError(error.message || 'Sign in failed. Please try again.');
-        }
+        showAuthError(sanitizeError(error));
         return;
+      }
+      if (data.session) {
+        window.state.session = data.session;
+        window.state.user = data.session.user;
+        await loadUserData();
+        updateAuthUI();
+      } else {
+        var { data: sessionData } = await sb.auth.getSession();
+        if (sessionData && sessionData.session) {
+          window.state.session = sessionData.session;
+          window.state.user = sessionData.session.user;
+          await loadUserData();
+          updateAuthUI();
+        }
       }
     } else {
       var email = document.getElementById('registerEmail').value.trim();
       var password = document.getElementById('registerPassword').value;
       if (!email || !password) { showAuthErrorReg('Please enter both email and password.'); return; }
-      if (password.length < 6) { showAuthErrorReg('Password must be at least 6 characters.'); return; }
+      if (!isValidEmail(email)) { showAuthErrorReg('Please enter a valid email address.'); return; }
+      if (password.length < 8) { showAuthErrorReg('Password must be at least 8 characters.'); return; }
+      if (!/[A-Z]/.test(password)) { showAuthErrorReg('Password needs at least one uppercase letter.'); return; }
+      if (!/[0-9]/.test(password)) { showAuthErrorReg('Password needs at least one number.'); return; }
+      if (password.length > 128) { showAuthErrorReg('Password is too long.'); return; }
       var { error } = await sb.auth.signUp({ email: email, password: password });
       if (error) {
-        showAuthErrorReg(error.message || 'Registration failed. Please try again.');
+        showAuthErrorReg(sanitizeError(error));
         return;
       }
-      // Check if email confirmation is required
       showAuthErrorReg('');
       var regSuccess = document.getElementById('authSuccessReg');
       if (regSuccess) {
         regSuccess.textContent = 'Account created! Check your email to confirm, then sign in.';
         regSuccess.style.display = 'block';
       }
-      // Switch to login tab after short delay
-      setTimeout(function() { switchAuthTab('login'); }, 2000);
+      setTrackedTimeout(function() { switchAuthTab('login'); }, 2000);
       return;
     }
     closeModal('authModalOverlay');
     showToast(isRegister ? 'Account created! 🎉' : 'Welcome back! 🎉');
   } catch(e) {
     if (isRegister) {
-      showAuthErrorReg(e.message || 'Registration failed.');
+      showAuthErrorReg(sanitizeError(e, 'registration'));
     } else {
-      showAuthError(e.message || 'Sign in failed.');
+      showAuthError(sanitizeError(e, 'sign in'));
     }
   }
 }
 
 async function handleLogout() {
-  var sb = getSupabase();
-  if (sb) { try { await sb.auth.signOut(); } catch(e) {} }
-  window.state.user = null;
-  window.state.session = null;
-  window.state.userProfile = null;
-  updateAuthUI();
-  showToast('Signed out.');
-  switchPage('browse');
+  confirmAction('Are you sure you want to sign out?', async function() {
+    var sb = getSupabase();
+    if (sb) { try { await sb.auth.signOut(); } catch(e) { console.error('Logout error:', e); } }
+    window.state.user = null;
+    window.state.session = null;
+    window.state.userProfile = null;
+    updateAuthUI();
+    showToast('Signed out.');
+    switchPage('browse');
+  });
 }
 
 function showAuthError(msg) {
@@ -310,6 +307,7 @@ function openSettingsModal() {
   document.getElementById('settingsSbUrl').value = SUPABASE_URL;
   document.getElementById('settingsSbKey').value = SUPABASE_KEY;
   document.getElementById('settingsModalOverlay').style.display = 'flex';
+  initNotifToggles();
 }
 
 function saveSettings() {
@@ -317,8 +315,8 @@ function saveSettings() {
   var key = document.getElementById('settingsSbKey').value.trim();
   if (!url || !key) { showToast('Please enter both URL and Key.'); return; }
   try { var p = new URL(url); } catch(e) { showToast('Invalid URL format.'); return; }
-  localStorage.setItem('geogive_sb_url', url);
-  localStorage.setItem('geogive_sb_key', key);
+  try { localStorage.setItem('geogive_sb_url', url); } catch(e) { showToast('Failed to save settings.'); return; }
+  try { localStorage.setItem('geogive_sb_key', key); } catch(e) { showToast('Failed to save key.'); return; }
   SUPABASE_URL = url;
   SUPABASE_KEY = key;
   closeModal('settingsModalOverlay');

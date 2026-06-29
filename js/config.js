@@ -68,6 +68,7 @@ function initSupabase() {
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.warn('GeoGive: missing Supabase credentials. Open Settings (⚙️) to configure.');
+    showToast('Please configure Supabase credentials in Settings.');
     return null;
   }
 
@@ -82,6 +83,7 @@ function initSupabase() {
     }
   } catch(e) {
     console.error('GeoGive: Supabase init error', e);
+    showToast('Failed to initialize Supabase connection. Check your internet or credentials.');
     return null;
   }
 }

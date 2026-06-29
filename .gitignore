@@ -32,7 +32,6 @@ android/.gradle/
 *.aab
 *.apk
 android/geogive-release-key.jks
-android/geogive-release-key.jks
 android/gradle-local.properties
 
 # Temp files

@@ -2,7 +2,7 @@
 .item-card {
   background: white; border-radius: var(--radius); box-shadow: var(--shadow);
   overflow: hidden; margin-bottom: 12px; transition: transform 0.15s, box-shadow 0.15s;
-  cursor: pointer;
+  cursor: pointer; position: relative;
 }
 .item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 .item-image {
@@ -315,6 +315,18 @@
 
 .conn-indicator { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; display: none; }
 .conn-indicator.offline { background: #f44336; }
+.conn-indicator.syncing { background: #ff9800; animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* Skeleton loader */
+.skeleton-card { pointer-events: none; }
+.skeleton-image { height: 160px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+.skeleton-info { padding: 14px; }
+.skeleton-line { height: 12px; border-radius: 6px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; margin-bottom: 10px; }
+.skeleton-line-title { width: 70%; height: 16px; }
+.skeleton-line-meta { width: 50%; }
+.skeleton-line-desc { width: 90%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 #offlineBanner { display: none; background: #fff3e0; color: #e65100; padding: 8px 16px; font-size: 0.8rem; text-align: center; font-weight: 500; }
 /* Settings */
 .settings-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
@@ -350,3 +362,57 @@
 .toggle-switch.on::after { transform: translateX(20px); }
 /* Show expired toggle */
 .show-expired-toggle { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-left: auto; }
+
+/* Onboarding */
+.onboarding-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-200); display: inline-block; transition: background 0.3s; }
+.onboarding-dot.active { background: var(--green); width: 24px; border-radius: 4px; }
+
+/* ===== Utility classes replacing inline styles ===== */
+.hidden { display: none !important; }
+.text-center { text-align: center; }
+.mt-12 { margin-top: 12px; }
+.text-muted { color: #666; margin-bottom: 24px; }
+.error-text { color: red; font-size: 0.85rem; margin-bottom: 8px; }
+.success-text { color: var(--green); font-size: 0.85rem; margin-bottom: 8px; }
+.btn-link { background: none; border: none; color: var(--gray-400); font-size: 0.8rem; cursor: pointer; }
+
+/* Splash screen */
+.app-splash { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #2d8a4e; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+.splash-icon { font-size: 4rem; margin-bottom: 16px; }
+.splash-title { color: white; font-size: 1.5rem; font-weight: 700; }
+.splash-subtitle { color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-top: 8px; }
+
+/* Section / page titles */
+.section-title { margin-bottom: 16px; }
+
+/* List header with toggle */
+.list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+/* Image previews */
+.image-previews { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+/* Modal sizing */
+.modal-sm { max-width: 400px; width: 100%; }
+.item-modal-content { background: white; border-radius: var(--radius); max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+
+/* Loading overlay */
+.loading-overlay { display: none; align-items: center; justify-content: center; }
+.loading-box { background: white; padding: 24px; border-radius: 12px; text-align: center; }
+.loading-icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* Notifications section */
+.notif-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 16px; }
+.notif-title { margin-bottom: 12px; font-size: 0.95rem; }
+
+/* Button row */
+.btn-row { display: flex; gap: 8px; }
+
+/* Safety modal */
+.safety-box { background: #fff3e0; border-radius: 12px; padding: 16px; margin-bottom: 16px; font-size: 0.9rem; }
+.safety-heading { font-weight: 600; margin-bottom: 8px; color: #e65100; }
+.safety-list { padding-left: 20px; line-height: 1.6; }
+.safety-label { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 0.85rem; }
+
+/* Onboarding */
+.onboarding-dots { display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 16px; }
+.onboarding-title { margin-bottom: 12px; }

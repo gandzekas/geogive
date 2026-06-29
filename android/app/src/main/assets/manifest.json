@@ -2,7 +2,8 @@
   "name": "GeoGive - Free Stuff Near You",
   "short_name": "GeoGive",
   "description": "Give away items to people near you. Free, local, no hassle.",
-  "start_url": "/index.html",
+  "start_url": "/geogive/index.html",
+  "scope": "/geogive/",
   "display": "standalone",
   "background_color": "#f7f7f7",
   "theme_color": "#2d8a4e",
@@ -35,5 +36,19 @@
   ],
   "categories": ["lifestyle", "social"],
   "lang": "en",
-  "id": "/index.html"
+  "id": "/geogive/index.html",
+  "shortcuts": [
+    {
+      "name": "Post Item",
+      "short_name": "Post",
+      "url": "/geogive/index.html#post",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Browse Items",
+      "short_name": "Browse",
+      "url": "/geogive/index.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

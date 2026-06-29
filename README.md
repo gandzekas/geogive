@@ -1,205 +1,100 @@
-# GeoGive — Location-Based Giveaway PWA
+# GeoGive
 
-Give away items to people near you. Free, local, no hassle.
+GeoGive is a mobile-first PWA/TWA for listing and requesting free items nearby.
 
-## What is GeoGive?
+## What it does
 
-GeoGive is a progressive web app that lets you browse and post free items on a map. See what's available nearby, request items from neighbors, and declutter your life — all without fees, ads, or catches.
+People can create local giveaway listings, browse items on a map or list, request items, coordinate through chat, rate completed handoffs, and wrap the same PWA as an Android Trusted Web Activity.
 
-## Features
+## Tech stack
 
-- **Map-based browsing** — See free items plotted on an interactive map (Leaflet + OpenStreetMap)
-- **Post items** — List items with photos, descriptions, categories, and conditions
-- **Request system** — Request items and coordinate pickups via built-in chat
-- **Real-time updates** — New items and messages appear instantly (Supabase Realtime)
-- **Push notifications** — Get notified when someone requests your item or replies to your chat
-- **User profiles** — Customize your avatar, bio, and reputation
-- **Offline-first** — Queue actions when offline, sync when back online
-- **Image compression** — Automatic client-side image optimization before upload
-- **Safe interactions** — Block users, report content, safety tips
-- **Android app** — TWA wrapper for Google Play Store distribution
-- **Privacy-respecting** — No tracking, no ads, no data selling
+- Frontend: vanilla JavaScript, HTML, CSS
+- Map: Leaflet with OpenStreetMap tiles
+- Backend: Supabase Auth, Postgres, Storage, and Realtime
+- Mobile: Android TWA wrapper in `android/`
+- CI: GitHub Actions builds APK, signed APK, and AAB
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Vanilla JS (ES modules), CSS3, HTML5 |
-| Map | Leaflet 1.9 + OpenStreetMap tiles |
-| Backend | Supabase (PostgreSQL + PostGIS) |
-| Auth | Supabase Auth (Email, Google OAuth) |
-| Storage | Supabase Storage (item photos) |
-| Realtime | Supabase Realtime subscriptions |
-| Push | Firebase Cloud Messaging (FCM) |
-| Mobile | Trusted Web Activity (TWA) for Android |
-| CI/CD | GitHub Actions |
-| Deploy | GitHub Pages |
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+ (for dev server only — the app itself is vanilla JS)
-- A Supabase project (free tier works)
-- A Firebase project (for push notifications)
-
-### 1. Clone & install
+## Local development
 
 ```bash
-git clone https://github.com/gandzekas/geogive.git
-cd geogive
+npm ci
+npm run lint:html
+npm run lint:js
+node test_app.js
 ```
 
-### 2. Configure environment
+The dev server is only for desktop debugging. Mobile OAuth and geolocation require an HTTPS production URL, not a phone hitting Termux localhost.
 
-```bash
-cp .env.example .env.local
-# Edit .env.local with your Supabase and Firebase credentials
-```
+## PWA and TWA URLs
 
-### 3. Set up the database
+Current aligned PWA/TWA target:
 
-Run the SQL migration in your Supabase SQL Editor:
+- PWA URL: `https://gandzekas.github.io/geogive/index.html`
+- Manifest URL: `https://gandzekas.github.io/geogive/manifest.json`
+- TWA start URL: `/geogive/index.html`
+- TWA scope: `/geogive/`
 
-```bash
-cat supabase-migration.sql
-# Copy the output and paste it into Supabase SQL Editor
-```
+Keep these in sync:
 
-### 4. Run locally
+- `manifest.json`
+- `android/app/src/main/assets/manifest.json`
+- `android/twa-manifest.json`
+- `android/app/src/main/AndroidManifest.xml`
+- `android/app/src/main/res/values/strings.xml`
+- `.well-known/assetlinks.json`
+- `assetlinks.json`
 
-```bash
-# Option 1: Python
-python3 -m http.server 8080
+## Supabase configuration
 
-# Option 2: Node.js
-npx serve .
+Do not hardcode Supabase credentials in HTML or committed files. Configure the project in the running app settings panel or inject values through a safe build/runtime mechanism. The public Supabase anon key is not a server secret, but it should still be rotated if it was previously exposed in committed history.
 
-# Option 3: VS Code Live Server extension
-```
+## Android release
 
-Open `http://localhost:8080` in your browser.
+Use GitHub Actions for real APK/AAB builds on x86_64. Termux/Android ARM local Gradle builds commonly fail because AAPT2 is distributed as an x86_64 binary.
 
-### 5. Deploy
+Required GitHub Actions secrets:
 
-Push to GitHub → GitHub Pages serves it automatically. No build step needed.
+- `GEOGIVE_KEYSTORE_BASE64`
+- `GEOGIVE_STORE_PASSWORD`
+- `GEOGIVE_KEY_PASSWORD`
 
-## Project Structure
+The workflow verifies that the Asset Links fingerprint matches the decoded keystore before publishing release artifacts.
 
-```
-geogive/
-├── index.html              # Main HTML entry point
-├── manifest.json           # PWA manifest
-├── sw.js                   # Service worker (offline cache)
-├── .env.example            # Environment variable template
-├── .gitignore              # Git ignore rules
-├── README.md               # This file
-├── CONTRIBUTING.md         # Contribution guidelines
-├── CODE_OF_CONDUCT.md      # Community conduct rules
-├── supabase-migration.sql  # Full database schema
-├── css/
-│   ├── variables.css       # CSS custom properties
-│   ├── base.css            # Reset, body, typography
-│   ├── layout.css          # Header, nav, pages
-│   ├── components.css      # Cards, buttons, modals, forms
-│   └── map.css             # Map container, popups
-├── js/
-│   ├── app.js              # Entry point, init, global state
-│   ├── config.js           # App configuration (Supabase URL, constants)
-│   ├── utils.js            # Utility functions (escHtml, truncate, etc.)
-│   ├── geo.js              # Geolocation, distance calculations
-│   ├── map.js              # Leaflet map, markers, filtering
-│   ├── auth.js             # Supabase auth, login/logout, Google OAuth
-│   ├── items.js            # Item CRUD, offline support
-│   ├── requests.js         # Item request system
-│   ├── chats.js            # Real-time chat between users
-│   ├── images.js            # Image compression, preview, upload
-│   ├── ui.js               # UI components (cards, modals, toasts)
-│   ├── profile.js          # User profiles, reports, blocking
-│   ├── notifications.js    # Push notifications, FCM
-│   ├── offline.js          # Offline action queue
-│   └── router.js           # Page navigation
-├── android/                # Android TWA wrapper
-│   ├── README.md           # TWA build instructions
-│   ├── PLAY_STORE_LISTING.md # Play Store listing template
-│   ├── build-release.sh    # Build script
-│   ├── generate-signing-key.sh # Key generation
-│   ├── twa-manifest.json   # TWA configuration
-│   ├── app/                # Android project source
-│   └── ...
-└── .github/
-    ├── ISSUE_TEMPLATE/
-    │   ├── bug_report.md
-    │   └── feature_request.md
-    └── workflows/
-        └── ci.yml          # CI/CD pipeline
-```
+## Digital Asset Links caveat
 
-## Database Schema
+DAL verification is origin-based. For a GitHub Pages project path like `https://gandzekas.github.io/geogive/`, DAL checks `https://gandzekas.github.io/.well-known/assetlinks.json`, not the project path. Use a custom domain or a user/org Pages root for verified TWA links.
 
-The app uses Supabase with the following tables:
+## Implemented app flows
 
-| Table | Purpose |
-|-------|---------|
-| `profiles` | User display names, avatars, bios |
-| `items` | Giveaway listings with geo coordinates |
-| `photos` | Item photo URLs (linked to items) |
-| `requests` | Item request messages |
-| `chats` | Private messages between users |
-| `notifications` | Push notification history |
-| `reports` | User-submitted content reports |
-| `ratings` | User reputation ratings |
-| `blocked_users` | User block list |
+- Supabase-backed auth scaffolding with Google OAuth and email sign-in paths
+- Item create, browse, filter, renew, delete, and mark-given flows
+- Request accept/decline flow
+- Chat flow for accepted requests
+- Reports and ratings
+- Profile edit and avatar/name display
+- Local in-app notification state
+- Offline action queue scaffolding
+- Service worker/offline cache scaffolding
 
-See `supabase-migration.sql` for the complete schema.
+## Explicitly not implemented
 
-## Configuration
+- Payment processing
+- Real FCM push notifications
+- Play Store metadata/screenshots
+- Privacy policy page
+- End-to-end on-device auth/data/map smoke tests
 
-The app reads configuration from environment variables at build time. For GitHub Pages deployment, it falls back to prompts.
+Those are not done-done until implemented and verified.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SUPABASE_URL` | Yes | Your Supabase project URL |
-| `SUPABASE_ANON_KEY` | Yes | Your Supabase anonymous key |
-| `VAPID_KEY` | No | FCM VAPID key for push notifications |
+## Release checklist
 
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Ways to contribute:
-
-- 🐛 **Report bugs** — Open an issue with the bug report template
-- 💡 **Suggest features** — Open an issue with the feature request template
-- 📝 **Improve docs** — Fix typos, add examples, clarify instructions
-- 🎨 **Fix UI issues** — Responsive bugs, accessibility improvements
-- ⚡ **Add features** — Pick an open issue and submit a PR
-- 🧹 **Refactor** — Clean up code, improve performance
-
-### Development workflow:
-
-1. Fork the repo
-2. Create a branch: `git checkout -b feature/my-feature`
-3. Make changes, test locally
-4. Commit: `git commit -m "Add my feature"`
-5. Push: `git push origin feature/my-feature`
-6. Open a PR
-
-## Roadmap
-
-- [ ] iOS Safari push notifications
-- [ ] Image carousel on item cards
-- [ ] Email notifications (Supabase Edge Functions)
-- [ ] Admin moderation panel
-- [ ] Item favorites/watchlist
-- [ ] Expiration date reminders
-- [ ] Multi-language support
-- [ ] Accessibility audit (WCAG 2.1 AA)
-
-## License
-
-MIT — See [LICENSE](LICENSE) for details.
-
-## Credits
-
-Built with ❤️ using [Supabase](https://supabase.com), [Leaflet](https://leafletjs.com), and [OpenStreetMap](https://openstreetmap.org).
+- [ ] CI builds debug APK, signed release APK, and AAB
+- [ ] APK/AAB artifacts are downloaded and installed on a real Android device
+- [ ] TWA opens the HTTPS PWA URL
+- [ ] Digital Asset Links verifies for the actual release keystore and origin
+- [ ] Google OAuth works on production
+- [ ] Email auth behavior matches Supabase email confirmation settings
+- [ ] Create/list/request/chat/report/rate flows pass on device
+- [ ] Map/geolocation works over HTTPS
+- [ ] PWA installability works
+- [ ] Supabase schema, RLS, and storage rules match the client code

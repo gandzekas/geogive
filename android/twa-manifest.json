@@ -7,8 +7,8 @@
   "themeColor": "#2d8a4e",
   "navigationColor": "#2d8a4e",
   "backgroundColor": "#f7f7f7",
-  "enableNotifications": true,
-  "startUrl": "/geogive/",
+  "enableNotifications": false,
+  "startUrl": "/geogive/index.html",
   "iconUrl": "https://gandzekas.github.io/geogive/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
@@ -19,7 +19,7 @@
   "appVersionName": "1.0.0",
   "generatorApp": "bubblewrap-cli",
   "minSdkVersion": 21,
-  "targetSdkVersion": 34,
+  "targetSdkVersion": 35,
   "webManifestUrl": "https://gandzekas.github.io/geogive/manifest.json",
   "features": {
     "locationDelegation": {

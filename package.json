@@ -7,8 +7,8 @@
     "dev": "npx serve . -p 8080",
     "start": "npx serve . -p 8080",
     "lint:html": "npx html-validate index.html",
-    "lint:js": "npx eslint js/ --ext .js || true",
-    "format": "npx prettier --write '**/*.{js,css,html,json,md,yml}' || true"
+    "lint:js": "npx eslint js/",
+    "format": "npx prettier --write '**/*.{js,css,html,json,md,yml}'"
   },
   "devDependencies": {
     "serve": "^14.2.0",

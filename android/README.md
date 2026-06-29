@@ -1,270 +1,107 @@
-# GeoGive Android TWA — Build & Submission Guide
+# GeoGive Android TWA Build Guide
 
-This directory contains the Android Trusted Web Activity (TWA) wrapper for the GeoGive PWA, enabling submission to the Google Play Store.
+This directory contains the Gradle-based Trusted Web Activity wrapper for the GeoGive PWA.
 
-## Architecture Overview
+## Current TWA target
 
-```
-geogive/
-├── index.html          ← PWA (not modified)
-├── manifest.json       ← Web App Manifest (not modified)
-├── sw.js               ← Service Worker (not modified)
-├── icon-192.png        ← PWA icon (192x192)
-├── icon-512.png        ← PWA icon (512x512)
-└── android/            ← TWA wrapper (this directory)
-    ├── app/
-    │   ├── build.gradle
-    │   ├── proguard-rules.pro
-    │   └── src/main/
-    │       ├── AndroidManifest.xml
-    │       ├── res/
-    │       │   ├── values/
-    │       │   │   ├── strings.xml
-    │       │   │   ├── themes.xml
-    │       │   │   └── colors.xml
-    │       │   ├── drawable/
-    │       │   │   └── splash_background.xml
-    │       │   └── xml/
-    │       │       └── file_paths.xml
-    │       └── assets/    ← Symlink or copy of PWA files
-    ├── build.gradle
-    ├── settings.gradle
-    ├── gradle.properties
-    ├── gradle/wrapper/gradle-wrapper.properties
-    ├── twa-manifest.json
-    ├── assetlinks.json
-    └── README.md
-```
+- Package: `com.geogive.app`
+- Default URL: `https://gandzekas.github.io/geogive/index.html`
+- Web manifest: `https://gandzekas.github.io/geogive/manifest.json`
+- `targetSdk`: `35`
 
-## Prerequisites
+## Local checks
 
-- **Node.js** ≥ 18.x (for Bubblewrap CLI)
-- **Java** ≥ 17 (JDK, not JRE)
-- **Android SDK** with API 34 platform tools
-- **Bubblewrap CLI**: `npm install -g @anthropic/bubblewrap-cli`
-  - Note: The original Google Bubblewrap is at `@nicolo-ribaudo/bubblewrap-cli` or `bubblewrap`
-
-## Quick Start with Bubblewrap CLI
-
-### Option A: Initialize from existing project (recommended)
+Run these from the repository root before touching Android builds:
 
 ```bash
-# From the android/ directory
-cd /home/salka/workspace/mvps/geogive/android
-
-# Initialize Bubblewrap with the PWA URL
-bubblewrap init --manifest https://geogive.app/manifest.json
-
-# Or initialize from local files
-bubblewrap init --manifest file:///home/salka/workspace/mvps/geogive/manifest.json
+npm run lint:html
+npm run lint:js
+node --check test_app.js
+find js -name '*.js' -print0 | xargs -0 -n1 node --check
+find android/app/src/main/assets/js -name '*.js' -print0 | xargs -0 -n1 node --check
+node test_app.js
+./gradlew :app:processDebugManifest
 ```
 
-Bubblewrap will:
-1. Generate the Android project structure
-2. Download icons from the manifest
-3. Create signing keys
-4. Generate `twa-manifest.json`
+`./gradlew assembleDebug` is expected to fail on Termux/Android ARM because the cached AAPT2 binary is x86_64-only. Use GitHub Actions or an x86_64 Linux runner for real APK/AAB builds.
 
-### Option B: Build from this pre-configured project
+## Asset sync
+
+Do not hand-copy only one or two files. The CI workflow and `android/build-release.sh` replace `android/app/src/main/assets` with the current PWA files:
+
+- `index.html`
+- `manifest.json`
+- `sw.js`
+- `icon-192.png`
+- `icon-512.png`
+- `css/`
+- `js/`
+
+## Digital Asset Links
+
+The release certificate fingerprint must match the keystore used by CI.
+
+`assetlinks.json`, `.well-known/assetlinks.json`, and `android/assetlinks.json` must all contain:
+
+- `package_name`: `com.geogive.app`
+- the same SHA-256 certificate fingerprint as the release keystore
+- fingerprint values with colons, for example `AA:BB:CC:...`
+
+Verify locally after decoding or generating the real release keystore:
 
 ```bash
-cd /home/salka/workspace/mvps/geogive/android
-
-# Copy PWA assets into the Android asset directory
-mkdir -p app/src/main/assets
-cp ../index.html app/src/main/assets/
-cp ../manifest.json app/src/main/assets/
-cp ../sw.js app/src/main/assets/
-cp ../icon-192.png app/src/main/assets/
-cp ../icon-512.png app/src/main/assets/
-
-# Build the debug APK
-./gradlew assembleDebug
-
-# Build the release AAB (for Play Store)
-./gradlew bundleRelease
+keytool -list -v -keystore geogive-release-key.jks -alias geogive
 ```
 
-## Step-by-Step Build Instructions
+Then compare the `SHA256:` value with all three Asset Links files.
 
-### 1. Generate a Signing Key
+Important: Digital Asset Links verification is origin-based. For a GitHub Pages project site such as `https://gandzekas.github.io/geogive/`, DAL checks `https://gandzekas.github.io/.well-known/assetlinks.json`, not `https://gandzekas.github.io/geogive/.well-known/assetlinks.json`. Use a custom domain or a user/org Pages root if verified TWA links are required.
 
-You need a Java KeyStore (.jks) file to sign your app. **Keep this file safe and never commit it to version control.**
+## Stable signing for CI
 
-```bash
-keytool -genkeypair \
-  -keystore geogive-release-key.jks \
-  -alias geogive \
-  -keyalg RSA \
-  -keysize 2048 \
-  -validity 10000 \
-  -storepass YOUR_STORE_PASSWORD \
-  -keypass YOUR_KEY_PASSWORD \
-  -dname "CN=GeoGive, OU=Mobile, O=GeoGive Inc, L=City, ST=State, C=US"
-```
+Do not generate a fresh signing key per workflow run. Play Store updates require the same keystore forever.
 
-**Important:** Store the passwords securely. You will need them for every release build.
+Required GitHub Actions secrets:
 
-### 2. Get Your SHA-256 Certificate Fingerprint
+| Secret                    | Purpose                               |
+| ------------------------- | ------------------------------------- |
+| `GEOGIVE_KEYSTORE_BASE64` | Base64-encoded stable `.jks` keystore |
+| `GEOGIVE_STORE_PASSWORD`  | Keystore password                     |
+| `GEOGIVE_KEY_PASSWORD`    | Private key password                  |
 
-```bash
-keytool -list \
-  -v \
-  -keystore geogive-release-key.jks \
-  -alias geogive \
-  -storepass YOUR_STORE_PASSWORD
-```
+The workflow decodes the keystore, creates `android/gradle-local.properties`, verifies the Asset Links fingerprint, builds debug APK, release APK, and release AAB.
 
-Look for the `SHA256:` line in the output. It will look like:
-```
-SHA256: AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90
-```
+## Release workflow
 
-### 3. Update Digital Asset Links
+`.github/workflows/build.yml` runs on push to `main` or `master` and on manual dispatch:
 
-Edit `assetlinks.json` and replace `YOUR_SHA256_CERT_FINGERPRINT_HERE` with your actual SHA-256 fingerprint (remove colons):
+1. `npm ci`
+2. HTML lint
+3. JavaScript lint
+4. JavaScript syntax checks
+5. `node test_app.js`
+6. Sync PWA assets into Android assets
+7. Process Android debug manifest
+8. Decode stable signing keystore from GitHub secrets
+9. Verify Asset Links fingerprint against that keystore
+10. Build `assembleDebug`
+11. Build `assembleRelease`
+12. Build `bundleRelease`
+13. Verify APK/AAB archives with `unzip -t`
+14. Upload artifacts and publish a GitHub Release with APK/AAB assets
 
-```json
-{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "com.geogive.app",
-    "sha256_cert_fingerprints": [
-      "AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56:78:90"
-    ]
-  }
-}
-```
+## Release outputs
 
-### 4. Host the Asset Links File
+- Debug APK: `android/app/build/outputs/apk/debug/app-debug.apk`
+- Release APK: `android/app/build/outputs/apk/release/app-release.apk`
+- Release AAB: `android/app/build/outputs/bundle/release/app-release.aab`
 
-Upload `assetlinks.json` to your web server at:
-```
-https://geogive.app/.well-known/assetlinks.json
-```
+## What is not implemented here
 
-Verify it's accessible:
-```bash
-curl -I https://geogive.app/.well-known/assetlinks.json
-# Should return HTTP 200 with Content-Type: application/json
-```
-
-### 5. Add Launcher Icons
-
-Place your app icons in the following directories:
-
-```
-app/src/main/res/
-├── mipmap-mdpi/
-│   ├── ic_launcher.png      (48x48)
-│   └── ic_launcher_round.png (48x48)
-├── mipmap-hdpi/
-│   ├── ic_launcher.png      (72x72)
-│   └── ic_launcher_round.png (72x72)
-├── mipmap-xhdpi/
-│   ├── ic_launcher.png      (96x96)
-│   └── ic_launcher_round.png (96x96)
-├── mipmap-xxhdpi/
-│   ├── ic_launcher.png      (144x144)
-│   └── ic_launcher_round.png (144x144)
-└── mipmap-xxxhdpi/
-    ├── ic_launcher.png      (192x192)
-    └── ic_launcher_round.png (192x192)
-```
-
-You can generate these from the existing `icon-512.png` using:
-- Android Studio → File → New → Image Asset
-- Or an online tool like [icon.kitchen](https://icon.kitchen)
-
-### 6. Build the Release AAB
-
-```bash
-# Create gradle-local.properties with signing config
-cat > gradle-local.properties << 'EOF'
-storeFile=geogive-release-key.jks
-storePassword=YOUR_STORE_PASSWORD
-keyAlias=geogive
-keyPassword=YOUR_KEY_PASSWORD
-EOF
-
-# Build the Android App Bundle (AAB) for Play Store
-./gradlew bundleRelease
-```
-
-The AAB will be at: `app/build/outputs/bundle/release/app-release.aab`
-
-### 7. Test the Release Build
-
-```bash
-# Install on a connected device
-adb install app/build/outputs/bundle/release/app-release.aab
-
-# Or install the APK directly
-adb install app/build/outputs/release/app-release.apk
-```
-
-## Offline-First Configuration
-
-The TWA is configured to work offline-first:
-
-1. **Service Worker**: The existing `sw.js` caches `index.html` on install
-2. **Local Assets**: PWA files are bundled in `app/src/main/assets/`
-3. **Fallback**: If the service worker can't reach the network, it serves the cached `index.html`
-
-To bundle local assets:
-```bash
-# Copy all PWA files into the Android assets directory
-cp -r ../index.html ../manifest.json ../sw.js ../icon-*.png app/src/main/assets/
-```
-
-## Updating the App
-
-When you update the PWA:
-
-1. Update the files in `app/src/main/assets/`
-2. Increment `versionCode` and `versionName` in `app/build.gradle`
-3. Rebuild: `./gradlew bundleRelease`
-4. Upload the new AAB to the Play Console
-
-## Troubleshooting
-
-### "Site not verified" / URL bar shows up
-- Ensure `assetlinks.json` is hosted correctly at `/.well-known/assetlinks.json`
-- Verify the SHA-256 fingerprint matches your signing key
-- Check with: `https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://geogive.app&relation=delegate_permission/common.handle_all_urls`
-
-### Splash screen not showing
-- Verify `splash_background.xml` exists in `res/drawable/`
-- Check that `ic_launcher.png` exists in all `mipmap-*` directories
-- Ensure the splash image dimensions are correct (512x512 recommended)
-
-### App crashes on launch
-- Check `adb logcat` for errors
-- Verify `minSdk` is compatible with the test device
-- Ensure Chrome is installed and updated on the test device
-
-### Location permission not working
-- The app requests `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`
-- Chrome handles the permission prompt within the TWA
-- Ensure the user grants location permission when prompted
-
-## Play Store Submission Checklist
-
-- [ ] Release AAB built and signed
-- [ ] `assetlinks.json` hosted and verified
-- [ ] Launcher icons in all density buckets
-- [ ] Screenshots prepared (phone + tablet)
-- [ ] Store listing content written (see `PLAY_STORE_LISTING.md`)
-- [ ] Content rating questionnaire completed
-- [ ] Privacy policy URL configured
-- [ ] App signing by Google Play enabled in Play Console
-- [ ] Target API level 34 confirmed
+GeoGive is a free giveaway app. There is no payment processor, Stripe, PayPal, crypto payout, or FCM push implementation. In-app notification state is local-only until a real backend notification path is added.
 
 ## References
 
-- [Bubblewrap CLI Documentation](https://github.com/nicolo-ribaudo/bubblewrap)
-- [android-browser-helper](https://github.com/nicolo-ribaudo/android-browser-helper)
 - [TWA Documentation](https://developer.chrome.com/docs/android/trusted-web-activity/)
 - [Digital Asset Links](https://developers.google.com/digital-asset-links/v1/getting-started)
-- [Play Console Help](https://support.google.com/googleplay/android-developer/)
+- [GitHub Actions releases](https://github.com/softprops/action-gh-release)

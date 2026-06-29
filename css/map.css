@@ -26,3 +26,28 @@
 .loc-status.granted { background: var(--green-light); color: var(--green); }
 .loc-status.denied { background: var(--orange-light); color: var(--orange); }
 .loc-status.pending { background: var(--gray-200); color: var(--gray-700); }
+
+/* Marker Cluster Custom Styles */
+.marker-cluster-custom {
+  background: transparent !important;
+  border: none !important;
+}
+.marker-cluster-custom div {
+  background: var(--green);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 8px rgba(45, 138, 78, 0.4);
+  border: 3px solid white;
+  width: 100%;
+  height: 100%;
+}
+.marker-cluster-small .marker-cluster-custom div { width: 34px; height: 34px; font-size: 0.75rem; }
+.marker-cluster-medium .marker-cluster-custom div { width: 44px; height: 44px; font-size: 0.85rem; }
+.marker-cluster-large .marker-cluster-custom div { width: 54px; height: 54px; font-size: 1rem; }
+/* Override leaflet.markercluster defaults */
+.leaflet-marker-cluster-panel { display: none; }

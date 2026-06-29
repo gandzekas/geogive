@@ -1,8 +1,52 @@
-const CACHE_NAME = 'geogive-v3';
+const CACHE_NAME = 'geogive-v4';
 const OFFLINE_URL = '/index.html';
+var PRECACHE_URLS = [
+  '/index.html',
+  '/css/variables.css',
+  '/css/base.css',
+  '/css/layout.css',
+  '/css/components.css',
+  '/css/map.css',
+  '/js/config.js',
+  '/js/utils.js',
+  '/js/geo.js',
+  '/js/map.js',
+  '/js/auth.js',
+  '/js/items.js',
+  '/js/chats.js',
+  '/js/requests.js',
+  '/js/images.js',
+  '/js/ui.js',
+  '/js/profile.js',
+  '/js/notifications.js',
+  '/js/offline.js',
+  '/js/router.js',
+  '/js/app.js',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
+];
+
+// Skip caching for API/backend endpoints — always fetch fresh
+var NO_CACHE_PATTERNS = [
+  /supabase\.co/i,
+  /firebaseio\.com/i,
+  /firebaseapp\.com/i,
+  /googleapis\.com/i
+];
+
+function shouldSkipCache(url) {
+  return NO_CACHE_PATTERNS.some(function(pattern) { return pattern.test(url); });
+}
 
 self.addEventListener('install', function(event) {
-  // Don't pre-cache index.html — always fetch fresh
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(PRECACHE_URLS).catch(function(err) {
+        console.warn('SW: Some assets failed to cache:', err);
+      });
+    })
+  );
   self.skipWaiting();
 });
 
@@ -20,49 +64,43 @@ self.addEventListener('activate', function(event) {
 
 self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
-  // Network-first for HTML, cache assets
+
+  // Never cache API/backend requests — always go network-only
+  if (shouldSkipCache(event.request.url)) {
+    event.respondWith(
+      fetch(event.request).catch(function() {
+        return new Response(JSON.stringify({ error: 'Offline' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
+  }
+
+  // Network-first for HTML, cache-first for assets
+  if (event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request).catch(function() {
+        return caches.match(event.request).then(function(cached) {
+          return cached || caches.match(OFFLINE_URL);
+        });
+      })
+    );
+    return;
+  }
+
+  // Cache-first for CSS/JS/images
   event.respondWith(
-    fetch(event.request, { cache: 'no-store' }).then(function(response) {
-      if (response && response.status === 200) {
-        var clone = response.clone();
-        caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
-      }
-      return response;
-    }).catch(function() {
-      return caches.match(event.request).then(function(cached) {
-        return cached || caches.match(OFFLINE_URL);
-      });
-    })
-  );
-});
-
-// Push notification handler for FCM
-self.addEventListener('push', function(event) {
-  var data = {};
-  try { data = event.data ? event.data.json() : {}; } catch(e) {}
-  var title = data.title || 'GeoGive';
-  var options = {
-    body: data.body || 'You have a new notification',
-    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎁</text></svg>',
-    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎁</text></svg>',
-    tag: data.tag || 'geogive-notify',
-    data: data.url || '/index.html'
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
-});
-
-// Notification click handler
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close();
-  var url = event.notification.data || '/index.html';
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(function(windowClients) {
-      for (var i = 0; i < windowClients.length; i++) {
-        if (windowClients[i].url === url && 'focus' in windowClients[i]) {
-          return windowClients[i].focus();
+    caches.match(event.request).then(function(cached) {
+      if (cached) return cached;
+      return fetch(event.request).then(function(response) {
+        if (response && response.status === 200) {
+          var clone = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
         }
-      }
-      if (clients.openWindow) return clients.openWindow(url);
+        return response;
+      });
     })
   );
 });

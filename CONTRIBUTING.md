@@ -54,16 +54,16 @@ All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md
 
 #### File Organization
 
-| File | Purpose |
-|------|---------|
-| `js/config.js` | Configuration constants only |
-| `js/utils.js` | Pure utility functions |
-| `js/app.js` | Entry point, initialization, global state |
-| `js/auth.js` | Authentication-related code |
-| `js/items.js` | Item CRUD operations |
-| `js/ui.js` | UI rendering and interaction |
-| `css/variables.css` | Theme variables only |
-| `css/components.css` | Reusable UI components |
+| File                 | Purpose                                   |
+| -------------------- | ----------------------------------------- |
+| `js/config.js`       | Configuration constants only              |
+| `js/utils.js`        | Pure utility functions                    |
+| `js/app.js`          | Entry point, initialization, global state |
+| `js/auth.js`         | Authentication-related code               |
+| `js/items.js`        | Item CRUD operations                      |
+| `js/ui.js`           | UI rendering and interaction              |
+| `css/variables.css`  | Theme variables only                      |
+| `css/components.css` | Reusable UI components                    |
 
 #### Testing
 
@@ -84,7 +84,7 @@ All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md
 
 ### JavaScript Modules
 
-The app uses ES modules loaded via `<script type="module">`. Each module has a clear responsibility:
+The app uses vanilla JavaScript files loaded as normal scripts. Each module has a clear responsibility:
 
 - **app.js** — Initializes everything, manages global state, handles DOM events
 - **config.js** — Reads Supabase credentials from environment, defines app constants
@@ -97,7 +97,7 @@ The app uses ES modules loaded via `<script type="module">`. Each module has a c
 - **requests.js** — Item request flow
 - **images.js** — Client-side image compression
 - **profile.js** — User profiles, blocking, reporting
-- **notifications.js** — Push notification handling
+- **notifications.js** — Local in-app notification state helper
 - **offline.js** — Offline action queue
 - **router.js** — Page navigation
 - **utils.js** — Shared utility functions

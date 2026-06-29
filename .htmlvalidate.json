@@ -1,0 +1,9 @@
+{
+  "extends": ["html-validate:standard"],
+  "rules": {
+    "void-style": "error",
+    "no-implicit-button-type": "error",
+    "no-inline-style": "off",
+    "no-raw-characters": "error"
+  }
+}
