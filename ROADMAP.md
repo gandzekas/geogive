@@ -19,15 +19,15 @@
 
 ## Phase 2: Core Feature Expansion
 
-- [ ] **M11** — Add item categories with filter chips (Electronics, Clothes, Books, etc.)
-- [ ] **M12** — Implement item condition tags (New, Like New, Good, Fair)
-- [ ] **M13** — Add multiple photos per item (gallery carousel, max 5)
-- [ ] **M14** — Implement item expiration with auto-archive and renewal prompt
-- [ ] **M15** — Add "Save for Later" / bookmark feature with saved items view
+- [x] **M11** — Add item categories with filter chips ✅
+- [x] **M12** — Implement item condition tags ✅
+- [x] **M13** — Add multiple photos per item (gallery carousel, max 5) ✅
+- [x] **M14** — Implement item expiration with auto-archive and renewal prompt ✅
+- [x] **M15** — Add "Save for Later" / bookmark feature with saved items view ✅
 - [ ] **M16** — Implement push notifications for chat messages (Web Push API + Service Worker)
 - [ ] **M17** — Add real-time typing indicators in chat
 - [ ] **M18** — Implement message search within conversations
-- [ ] **M19** — Add user ratings/reviews after completed giveaways
+- [x] **M19** — Add user ratings/reviews after completed giveaways ✅
 - [ ] **M20** — Implement trust score system (completed giveaways, response rate, ratings)
 
 ## Phase 3: Social & Engagement
@@ -36,18 +36,18 @@
 - [ ] **M22** — Implement follower/following system
 - [ ] **M23** — Add "Give Feed" — chronological feed of items from followed users
 - [ ] **M24** — Implement share-via-link with Open Graph meta tags for rich previews
-- [ ] **M25** — Add in-app feedback form with screenshot attachment
-- [ ] **M26** — Implement report/block flow with moderation queue
+- [x] **M25** — Add in-app feedback form with screenshot attachment ✅
+- [x] **M26** — Implement report/block flow with moderation queue ✅
 - [ ] **M27** — Add community guidelines modal shown on first use
-- [ ] **M28** — Implement item bump (paid or time-limited free bumps)
-- [ ] **M29** — Add "Nearby Items" map view with clustering (Leaflet.markercluster)
+- [x] **M28** — Implement item bump (paid or time-limited free bumps) ✅
 - [ ] **M30** — User testing session #2: test social features, measure engagement
 
 ## Phase 4: Performance & Reliability
 
-- [ ] **M31** — Implement virtual scrolling for long item lists (1000+ items smooth)
-- [ ] **M32** — Add image lazy loading with IntersectionObserver and blur-up placeholders
-- [ ] **M33** — Implement offline queue: save actions when offline, sync on reconnect
+- [x] **M29** — Add "Nearby Items" map view with clustering ✅
+- [x] **M31** — Implement virtual scrolling for long item lists ✅
+- [x] **M32** — Add image lazy loading with IntersectionObserver ✅
+- [x] **M33** — Implement offline queue: save actions when offline, sync on reconnect ✅
 - [ ] **M34** — Add background sync for chat messages
 - [ ] **M35** — Implement proper cache versioning and stale-while-revalidate strategy
 - [ ] **M36** — Add Lighthouse CI to build pipeline (score ≥ 90 on all metrics)
