@@ -28,17 +28,17 @@
 - [x] **M17** — Add real-time typing indicators in chat ✅
 - [x] **M18** — Implement message search within conversations ✅
 - [x] **M19** — Add user ratings/reviews after completed giveaways ✅
-- [ ] **M20** — Implement trust score system (completed giveaways, response rate, ratings)
+- [x] **M20** — Implement trust score system ✅
 
 ## Phase 3: Social & Engagement
 
-- [ ] **M21** — Add user profiles with bio, photo, location, and giveaway history
+- [x] **M21** — Add user profiles with bio, photo, location, and giveaway history ✅
 - [ ] **M22** — Implement follower/following system
 - [ ] **M23** — Add "Give Feed" — chronological feed of items from followed users
-- [ ] **M24** — Implement share-via-link with Open Graph meta tags for rich previews
+- [x] **M24** — Implement share-via-link with Open Graph meta tags ✅
 - [x] **M25** — Add in-app feedback form with screenshot attachment ✅
 - [x] **M26** — Implement report/block flow with moderation queue ✅
-- [ ] **M27** — Add community guidelines modal shown on first use
+- [x] **M27** — Add community guidelines modal shown on first use ✅
 - [x] **M28** — Implement item bump (paid or time-limited free bumps) ✅
 - [ ] **M30** — User testing session #2: test social features, measure engagement
 
