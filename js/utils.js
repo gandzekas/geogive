@@ -418,8 +418,59 @@ function getResponseRate(userId) {
   return totalReqs.length / allReqs.length;
 }
 
+// ===== FOLLOW SYSTEM (M22) =====
+function getFollowing() {
+  try {
+    var f = localStorage.getItem('geogive_following');
+    return f ? JSON.parse(f) : [];
+  } catch(e) { return []; }
+}
+
+function saveFollowing(list) {
+  try { localStorage.setItem('geogive_following', JSON.stringify(list)); } catch(e) {}
+}
+
+function isFollowing(userId) {
+  return getFollowing().indexOf(userId) !== -1;
+}
+
+function toggleFollow(userId) {
+  var list = getFollowing();
+  var idx = list.indexOf(userId);
+  if (idx > -1) {
+    list.splice(idx, 1);
+    showToast('Unfollowed');
+  } else {
+    list.unshift(userId);
+    showToast('Following! �');
+    hapticMedium();
+  }
+  saveFollowing(list);
+  return list.indexOf(userId) !== -1;
+}
+
+function getFollowers(userId) {
+  // In a real app this would query the server
+  // For now, return count from localStorage
+  try {
+    var followers = JSON.parse(localStorage.getItem('geogive_followers_' + userId) || '[]');
+    return followers.length;
+  } catch(e) { return 0; }
+}
+
+// ===== FEED (M23) =====
+function getFeedItems() {
+  var following = getFollowing();
+  if (following.length === 0) return [];
+  var items = window.state.items.filter(function(item) {
+    return following.indexOf(item.ownerId) !== -1 && item.status === 'available';
+  });
+  // Sort by newest first
+  items.sort(function(a, b) { return b.createdAt - a.createdAt; });
+  return items;
+}
+
 function daysUntilExpiry(item) {
-  var createdAt = item.createdAt || (item.created_at ? new Date(item.created_at).getTime() : Date.now());
   var expiresAt = item.expiresAt || (item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000));
   return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
 }

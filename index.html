@@ -115,13 +115,19 @@
 
   <div class="page" id="page-profile"><div id="profileContent"></div></div>
   <div class="page" id="page-chat"><div id="chatContent"></div></div>
+  <div class="page" id="page-feed">
+    <h2 class="section-title">� Give Feed</h2>
+    <p class="text-muted" style="font-size:0.85rem">Latest from people you follow</p>
+    <div id="feedList"></div>
+  </div>
 </main>
 
 <nav class="bottom-nav">
   <button class="nav-tab active" data-page="browse" data-fn="switchPage" data-arg="browse" type="button"><span class="nav-icon">🗺️</span> Browse</button>
+  <button class="nav-tab" data-page="feed" data-fn="switchPage" data-arg="feed" type="button"><span class="nav-icon">🏠</span> Feed</button>
   <button class="nav-tab" data-page="post" data-fn="switchPage" data-arg="post" type="button"><span class="nav-icon">➕</span> Post</button>
   <button class="nav-tab" data-page="mylistings" data-fn="switchPage" data-arg="mylistings" type="button"><span class="nav-icon">📦</span> My Listings</button>
-  <button class="nav-tab" data-page="requests" data-fn="switchPage" data-arg="requests" id="requestsTab" type="button"><span class="nav-icon">📨</span> Requests <span class="notif-badge hidden" id="requestsBadge">0</span></button>
+  <button class="nav-tab" data-page="requests" data-fn="switchPage" data-arg="requests" id="requestsTab" type="button"><span class="nav-icon">�</span> Requests <span class="notif-badge hidden" id="requestsBadge">0</span></button>
 </nav>
 
 <div id="toast" class="toast"></div>

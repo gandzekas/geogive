@@ -53,9 +53,12 @@ function buildItemCard(item) {
   card += '<div class="item-desc">' + escHtml(truncate(item.desc, 80)) + '</div>';
   // Show owner profile
   card += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:0.8rem;color:var(--gray-700);flex-wrap:wrap">';
-  card += '<div class="profile-avatar">' + escHtml((item.ownerName || 'A').charAt(0).toUpperCase()) + '</div>';
-  card += '<span>' + escHtml(item.ownerName || 'Anonymous') + '</span>';
+  card += '<div class="profile-avatar" data-fn="showUserProfile" data-arg-expr="escJs(item.ownerId)" style="cursor:pointer">' + escHtml((item.ownerName || 'A').charAt(0).toUpperCase()) + '</div>';
+  card += '<span style="flex:1">' + escHtml(item.ownerName || 'Anonymous') + '</span>';
   card += trustBadgeHtml(item.ownerId);
+  if (window.state.user && item.ownerId !== window.state.user.id && !isOwn) {
+    card += '<button class="btn btn-sm ' + (isFollowing(item.ownerId) ? 'btn-secondary' : 'btn-primary') + '" data-fn="toggleFollow" data-arg-expr="escJs(item.ownerId)">' + (isFollowing(item.ownerId) ? '✓ Following' : '+ Follow') + '</button>';
+  }
   card += '</div>';
   if (!isOwn && item.status === 'available' && !expired) { card += '<div class="item-actions"><button class="btn btn-primary btn-sm" data-fn="requestItem" data-arg-expr="escJs(item.id)">I\'ll Take It</button></div>'; }
   else if (expired && isOwn) { card += '<div class="item-actions"><button class="btn btn-secondary btn-sm" data-fn="renewItem" data-arg-expr="escJs(item.id)">🔄 Renew</button></div>'; }
@@ -206,6 +209,7 @@ function switchPage(page) {
   if (page === 'mylistings') renderMyListings();
   if (page === 'requests') { loadRequestsFromSupabase().then(function() { renderRequests(); }); }
   if (page === 'profile') renderProfile();
+  if (page === 'feed') renderFeed();
   trackPageView(page);
 }
 
@@ -534,6 +538,29 @@ function restartOnboarding() {
   closeModal('settingsModalOverlay');
   localStorage.removeItem('geogive_onboarded');
   showOnboarding();
+}
+
+// ===== FEED (M23) =====
+function renderFeed() {
+  var container = document.getElementById('feedList');
+  if (!container) return;
+  if (!window.state.user) {
+    container.innerHTML = '<div class="empty-state"><p>Sign in to see your feed.</p></div>';
+    return;
+  }
+  var feedItems = getFeedItems();
+  if (feedItems.length === 0) {
+    var following = getFollowing();
+    if (following.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">🏠</div><h3 style="margin-bottom:8px">Your Feed is Empty</h3><p>Follow people to see their latest items here. Browse items and tap "+ Follow" on profiles!</p></div>';
+    } else {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><h3 style="margin-bottom:8px">No New Posts</h3><p>The people you follow haven\'t posted anything recently.</p></div>';
+    }
+    return;
+  }
+  var html = '';
+  feedItems.forEach(function(item) { html += buildItemCard(item); });
+  container.innerHTML = html;
 }
 
 function seedData() {
