@@ -207,6 +207,7 @@ function isFavorite(itemId) {
 }
 
 function toggleFavorite(itemId) {
+  hapticMedium();
   var favs = getFavorites();
   var id = String(itemId);
   var idx = favs.indexOf(id);

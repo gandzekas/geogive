@@ -6,15 +6,15 @@
 
 ## Phase 1: Polish & User Testing
 
-- [ ] **M1** — Set up analytics dashboard (Plausible or Umami self-hosted) and integrate privacy-first tracking
-- [ ] **M2** — Implement onboarding tutorial with 3-step walkthrough for first-time users
-- [ ] **M3** — Add pull-to-refresh on items list and chat list
-- [ ] **M4** — Create empty-state illustrations for no items, no chats, no requests
-- [ ] **M5** — Implement optimistic UI updates for like/favorite/send-message actions
-- [ ] **M6** — Add skeleton loading screens for all data-heavy views
-- [ ] **M7** — Implement proper error boundaries with retry buttons per component
-- [ ] **M8** — Add haptic feedback on key interactions (send message, confirm, delete)
-- [ ] **M9** — Implement swipe gestures on items (swipe to save/report)
+- [x] **M1** — Set up analytics dashboard and integrate privacy-first tracking ✅
+- [x] **M2** — Implement onboarding tutorial with 3-step walkthrough for first-time users ✅
+- [x] **M3** — Add pull-to-refresh on items list and chat list ✅
+- [x] **M4** — Create empty-state illustrations for no items, no chats, no requests ✅
+- [x] **M5** — Implement optimistic UI updates for like/favorite/send-message actions ✅
+- [x] **M6** — Add skeleton loading screens for all data-heavy views ✅
+- [x] **M7** — Implement proper error boundaries with retry buttons per component ✅
+- [x] **M8** — Add haptic feedback on key interactions (send message, confirm, delete) ✅
+- [x] **M9** — Implement swipe gestures on items (swipe to save/report) ✅
 - [ ] **M10** — User testing session #1: observe 3 real users, collect friction points
 
 ## Phase 2: Core Feature Expansion

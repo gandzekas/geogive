@@ -107,35 +107,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!localStorage.getItem('geogive_onboarded')) {
     setTrackedTimeout(showOnboarding, 1000);
   }
-  // Pull-to-refresh on browse page
-  var touchStartY = 0;
-  var touchMoved = false;
-  var touchStartHandler, touchMoveHandler, touchEndHandler;
-
-  touchStartHandler = function(e) {
-    if (document.getElementById('page-browse').classList.contains('active')) {
-      touchStartY = e.touches[0].clientY;
-      touchMoved = false;
-    }
-  };
-  touchMoveHandler = function(e) {
-    if (document.getElementById('page-browse').classList.contains('active')) {
-      var diff = e.touches[0].clientY - touchStartY;
-      if (diff > 80 && window.scrollY === 0) {
-        touchMoved = true;
-      }
-    }
-  };
-  touchEndHandler = function() {
-    if (touchMoved && getSupabase()) {
-      loadItemsFromSupabase();
-      showToast('🔄 Refreshing...');
-    }
-  };
-
-  document.addEventListener('touchstart', touchStartHandler, { passive: true });
-  document.addEventListener('touchmove', touchMoveHandler, { passive: true });
-  document.addEventListener('touchend', touchEndHandler, { passive: true });
+  // Pull-to-refresh on browse page (M3)
+  setupPullToRefresh();
 
   // Hide loading splash
   var splash = document.getElementById('appSplash');
@@ -289,6 +262,13 @@ window.nextOnboardingStep = nextOnboardingStep;
 window.skipOnboarding = skipOnboarding;
 window.toggleNotifPref = toggleNotifPref;
 window.resolveReport = resolveReport;
+window.haptic = haptic;
+window.hapticLight = hapticLight;
+window.hapticMedium = hapticMedium;
+window.hapticHeavy = hapticHeavy;
+window.showRetryUI = showRetryUI;
+window.renderEmptyState = renderEmptyState;
+window.setupPullToRefresh = setupPullToRefresh;
 
 window.state = state;
 
@@ -332,7 +312,13 @@ window.GeoGive = {
   trackEvent: trackEvent,
   rateLimit: rateLimit,
   renderAnalyticsDashboard: renderAnalyticsDashboard,
-  clearAnalyticsData: clearAnalyticsData
+  clearAnalyticsData: clearAnalyticsData,
+  haptic: haptic,
+  hapticLight: hapticLight,
+  hapticMedium: hapticMedium,
+  hapticHeavy: hapticHeavy,
+  showRetryUI: showRetryUI,
+  renderEmptyState: renderEmptyState
 };
 
 // ===== PWA INSTALL PROMPT =====

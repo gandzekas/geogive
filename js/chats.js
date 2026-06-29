@@ -206,6 +206,7 @@ async function sendChatMsg() {
   chat.messages.push(msg);
   if (input) { input.value = ''; input.disabled = true; }
   saveChatsToStorage();
+  hapticLight();
 
   var list = document.getElementById('chatMsgList');
   if (list) {
