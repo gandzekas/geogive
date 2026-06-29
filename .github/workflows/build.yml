@@ -115,16 +115,14 @@ jobs:
       - name: Create gradle-local.properties
         working-directory: ./android
         env:
-          GEOGIVE_KEYSTORE_BASE64: ${{ secrets.GEOGIVE_KEYSTORE_BASE64 }}
           GEOGIVE_STORE_PASSWORD: ${{ secrets.GEOGIVE_STORE_PASSWORD }}
           GEOGIVE_KEY_PASSWORD: ${{ secrets.GEOGIVE_KEY_PASSWORD }}
         run: |
-          cat > gradle-local.properties << EOF
-          storeFile=geogive-release-key.jks
-          storePassword=${GEOGIVE_STORE_PASSWORD}
-          keyAlias=geogive
-          keyPassword=${GEOGIVE_KEY_PASSWORD}
-          EOF
+          printf 'storeFile=geogive-release-key.jks\n' > gradle-local.properties
+          printf 'storePassword=%s\n' "${GEOGIVE_STORE_PASSWORD}" >> gradle-local.properties
+          printf 'keyAlias=geogive\n' >> gradle-local.properties
+          printf 'keyPassword=%s\n' "${GEOGIVE_KEY_PASSWORD}" >> gradle-local.properties
+          cat gradle-local.properties
 
       - name: Build Debug APK
         working-directory: ./android
