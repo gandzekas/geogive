@@ -246,6 +246,24 @@ function renderProfile() {
   html += '<textarea id="profileBio" placeholder="Add a short bio..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-top:8px;min-height:60px">' + escHtml(bio) + '</textarea>';
   html += '</div>';
 
+  // GeoGive Pro status (M42)
+  if (isProUser()) {
+    html += '<div style="margin-top:16px;padding:12px;background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-radius:12px;text-align:center">';
+    html += '<span style="font-size:1.5rem">⭐</span><strong> GeoGive Pro</strong>';
+    html += '<p style="font-size:0.8rem;color:#666;margin-top:4px">Unlimited bumps, analytics, pro badge</p>';
+    html += '</div>';
+  }
+
+  // Referral program (M41)
+  html += '<div style="margin-top:16px;padding:16px;background:#e8f5e9;border-radius:12px">';
+  html += '<h4 style="margin-bottom:8px">🎁 Invite Friends</h4>';
+  html += '<p style="font-size:0.85rem;color:#666;margin-bottom:8px">Share your referral code — both get a free Pro trial!</p>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<input type="text" value="' + getReferralCode() + '" readonly style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem;font-family:monospace;background:white">';
+  html += '<button class="btn btn-sm btn-primary" data-fn="shareReferralCode">Share</button>';
+  html += '</div>';
+  html += '</div>';
+
   // Admin section
   if (isAdmin) {
     html += '<div style="margin-top:24px;padding:16px;background:#fff3e0;border-radius:12px">';

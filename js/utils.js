@@ -488,3 +488,129 @@ function daysUntilExpiry(item) {
   var expiresAt = item.expiresAt || (item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000));
   return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
 }
+
+// ===== PROMOTED LISTINGS (M39) =====
+function isPromoted(item) {
+  if (!item.promotedAt) return false;
+  var promoExpires = item.promotedAt + (24 * 60 * 60 * 1000); // 24h boost
+  return Date.now() < promoExpires;
+}
+
+function getPromoTimeLeft(item) {
+  if (!item.promotedAt) return 0;
+  var promoExpires = item.promotedAt + (24 * 60 * 60 * 1000);
+  return Math.max(0, promoExpires - Date.now());
+}
+
+function promoteItem(itemId) {
+  var item = findItem(itemId);
+  if (!item) return;
+  // Check if user has free bumps remaining (1 free per item)
+  var freeBumpsUsed = localStorage.getItem('geogive_free_bump_' + itemId);
+  if (freeBumpsUsed) {
+    // Check GeoGive Pro status for unlimited bumps
+    if (!isProUser()) {
+      showToast('You already used your free bump. Upgrade to GeoGive Pro for unlimited boosts!');
+      return;
+    }
+  }
+  item.promotedAt = Date.now();
+  if (!freeBumpsUsed) {
+    localStorage.setItem('geogive_free_bump_' + itemId, 'true');
+  }
+  localStorage.setItem('geogive_items_cache', JSON.stringify(window.state.items));
+  hapticMedium();
+  showToast('⭐ Item promoted! It will appear at the top for 24 hours.');
+  applyFilters();
+  renderMyListings();
+}
+
+// ===== GEOGIVE PRO (M42) =====
+function isProUser() {
+  return localStorage.getItem('geogive_pro') === 'true';
+}
+
+function setProUser(status) {
+  localStorage.setItem('geogive_pro', status ? 'true' : 'false');
+  if (status) {
+    showToast('⭐ GeoGive Pro activated! Unlimited boosts, analytics, and badge.');
+    hapticHeavy();
+  }
+}
+
+// ===== REFERRAL PROGRAM (M41) =====
+function getReferralCode() {
+  var code = localStorage.getItem('geogive_referral_code');
+  if (!code) {
+    code = 'GG-' + (window.state.user ? window.state.user.id.substring(0, 6).toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase());
+    localStorage.setItem('geogive_referral_code', code);
+  }
+  return code;
+}
+
+function applyReferralCode(code) {
+  if (!code || code === getReferralCode()) return false;
+  localStorage.setItem('geogive_referred_by', code);
+  // Reward: give the new user a free pro trial
+  setProUser(true);
+  showToast('🎉 Referral applied! You got a free GeoGive Pro trial.');
+  return true;
+}
+
+function getReferralCount() {
+  try {
+    var count = localStorage.getItem('geogive_referral_count');
+    return count ? parseInt(count) : 0;
+  } catch(e) { return 0; }
+}
+
+function trackReferral() {
+  var count = getReferralCount() + 1;
+  localStorage.setItem('geogive_referral_count', count.toString());
+  // In a real app, this would sync to the server
+}
+
+// ===== STRIPE PAYMENT INTEGRATION (M40) =====
+async function initiatePayment(priceId, itemData) {
+  // Payment flow structure — requires Stripe publishable key in production
+  // For now, simulate a successful payment flow for testing
+  showLoading(true);
+  try {
+    // In production: redirect to Stripe Checkout or use Stripe Elements
+    // var stripe = Stripe('pk_live_...');
+    // await stripe.redirectToCheckout({ lineItems: [{ price: priceId, quantity: 1 }], mode: 'payment' });
+    
+    // Simulated payment for local/demo use
+    await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+    
+    showLoading(false);
+    hapticHeavy();
+    showToast('🎉 Payment successful! Item promoted.');
+    
+    // Log the payment event
+    trackEvent('payment_completed', { priceId: priceId, item: itemData });
+    return true;
+  } catch(e) {
+    showLoading(false);
+    handleError(e, 'payment');
+    return false;
+  }
+}
+
+function shareReferralCode() {
+  var code = getReferralCode();
+  var shareData = {
+    title: 'Join GeoGive with my code!',
+    text: 'Use my referral code ' + code + ' to get a free GeoGive Pro trial! Join GeoGive to give away and get free items nearby.',
+    url: window.location.origin + window.location.pathname + '#ref-' + code
+  };
+  if (navigator.share) {
+    navigator.share(shareData).catch(function() {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(shareData.url).then(function() {
+      showToast('Referral link copied! 📋');
+    });
+  } else {
+    prompt('Copy this link:', shareData.url);
+  }
+}

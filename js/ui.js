@@ -63,9 +63,10 @@ function buildItemCard(item) {
   if (!isOwn && item.status === 'available' && !expired) { card += '<div class="item-actions"><button class="btn btn-primary btn-sm" data-fn="requestItem" data-arg-expr="escJs(item.id)">I\'ll Take It</button></div>'; }
   else if (expired && isOwn) { card += '<div class="item-actions"><button class="btn btn-secondary btn-sm" data-fn="renewItem" data-arg-expr="escJs(item.id)">🔄 Renew</button></div>'; }
   else if (isOwn) { card += '<div class="item-actions"><span class="badge status-available">Your listing</span></div>'; }
-  else if (expired) { card += '<div class="item-actions"><span class="badge badge-expired">Expired</span></div>'; }
-  card += '</div></article>';
-  return card;
+ else if (expired) { card += '<div class="item-actions"><span class="badge badge-expired">Expired</span></div>'; }
+ else if (isPromoted(item)) { card += '<div class="item-actions"><span class="badge" style="background:#fff3e0;color:#e65100">⭐ Promoted</span></div>'; }
+ card += '</div></article>';
+ return card;
 }
 
 function openItemDetail(itemId) {
@@ -226,7 +227,16 @@ function renderBrowse() {
   var container = document.getElementById('itemList');
   if (!container) return;
   var items = getFilteredItems();
-  if (window.state.userLocation) { items.sort(function(a, b) { return (a.distance || 999) - (b.distance || 999); }); }
+  // Sort: promoted first, then by distance (M39)
+  items.sort(function(a, b) {
+    var aPromo = isPromoted(a) ? 0 : 1;
+    var bPromo = isPromoted(b) ? 0 : 1;
+    if (aPromo !== bPromo) return aPromo - bPromo;
+    return (a.distance || 999) - (b.distance || 999);
+  });
+
+  // Store all filtered items for pagination
+  window.state.allFilteredItems = items;
 
   // Store all filtered items for pagination
   window.state.allFilteredItems = items;
@@ -332,9 +342,12 @@ function renderMyListings() {
     html += buildItemCard(item);
     var isOwn = true;
     var expired = isItemExpired(item);
-    html += '<div style="display:flex;gap:8px;margin:-4px 0 12px 0;padding:0 4px">';
+    var promoted = isPromoted(item);
+    html += '<div style="display:flex;gap:8px;margin:-4px 0 12px 0;padding:0 4px;flex-wrap:wrap">';
+    if (promoted) html += '<span class="badge" style="background:#fff3e0;color:#e65100">⭐ Promoted</span>';
     if (!expired) html += '<button class="btn btn-sm btn-secondary" data-fn="bumpItem" data-arg-expr="escJs(item.id)">⬆️ Bump</button>';
-    html += '<button class="btn btn-sm btn-danger" data-fn="deleteItem" data-arg-expr="escJs(item.id)">🗑️ Delete</button>';
+    if (!expired) html += '<button class="btn btn-sm" style="background:#f5a623;color:white" data-fn="promoteItem" data-arg-expr="escJs(item.id)">⭐ Promote</button>';
+    html += '<button class="btn btn-sm btn-danger" data-fn="deleteItem" data-arg-expr="escJs(item.id)">�️ Delete</button>';
     html += '</div>';
   });
   container.innerHTML = html;

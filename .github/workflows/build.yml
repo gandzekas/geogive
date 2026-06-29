@@ -128,15 +128,15 @@ jobs:
         working-directory: ./android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug -PversionCodeOverride=${{ github.run_number }}
 
       - name: Build Release APK
         working-directory: ./android
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -PversionCodeOverride=${{ github.run_number }}
 
       - name: Build Release AAB
         working-directory: ./android
-        run: ./gradlew bundleRelease
+        run: ./gradlew bundleRelease -PversionCodeOverride=${{ github.run_number }}
 
       - name: Verify APK and AAB archives
         run: |
