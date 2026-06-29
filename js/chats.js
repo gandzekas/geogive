@@ -136,14 +136,21 @@ function openChat(chatId, itemTitle) {
   html += '<h3 style="margin:0">' + escHtml(itemTitle) + '</h3>';
   html += '<button data-fn="closeChatPage" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>';
   html += '</div>';
+  html += '<div id="chatSearchBar" style="display:flex;gap:6px;margin-bottom:8px">';
+  html += '<input type="text" id="chatSearchInput" placeholder="🔍 Search messages..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem" oninput="filterChatMessages()">';
+  html += '<button class="btn btn-sm btn-secondary" data-fn="clearChatSearch" style="display:none" id="clearSearchBtn">✕</button>';
+  html += '</div>';
   html += '<div id="chatMsgList" style="max-height:50vh;overflow-y:auto;margin-bottom:12px;padding:8px;background:#f5f5f5;border-radius:8px"></div>';
   html += '<div style="display:flex;gap:8px">';
-  html += '<input type="text" id="chatMsgInput" placeholder="Type a message..." style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:1rem" onkeydown="if(event.key===\'Enter\')sendChatMsg()">';
+  html += '<input type="text" id="chatMsgInput" placeholder="Type a message..." style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:1rem" onkeydown="if(event.key===\'Enter\')sendChatMsg()" oninput="handleChatTyping()">';
   html += '<button class="btn btn-primary" data-fn="sendChatMsg">Send</button>';
   html += '</div>';
 
   content.innerHTML = html;
   switchPage('chat');
+
+  // Subscribe to typing indicators (M17)
+  handleTypingBroadcast(chatId);
 
   renderChatMessages(chat);
   // Mark messages as read
@@ -152,7 +159,156 @@ function openChat(chatId, itemTitle) {
   if (list) list.scrollTop = list.scrollHeight;
 }
 
+// ===== TYPING INDICATORS (M17) =====
+var typingTimeout = null;
+var lastTypingBroadcast = 0;
+
+function showTypingIndicator(chatId, userName) {
+  var list = document.getElementById('chatMsgList');
+  if (!list) return;
+  var existing = document.querySelector('.typing-indicator');
+  if (existing) existing.remove();
+  var indicator = document.createElement('div');
+  indicator.className = 'typing-indicator';
+  indicator.style.cssText = 'font-size:0.75rem;color:#999;padding:4px 8px;font-style:italic';
+  indicator.textContent = userName + ' is typing...';
+  list.appendChild(indicator);
+  list.scrollTop = list.scrollHeight;
+  // Auto-remove after 3 seconds
+  setTrackedTimeout(function() { indicator.remove(); }, 3000);
+}
+
+function broadcastTyping(chatId) {
+  var now = Date.now();
+  if (now - lastTypingBroadcast < 2000) return; // Throttle to once per 2s
+  lastTypingBroadcast = now;
+  var sb = getSupabase();
+  if (!sb || !window.state.user) return;
+  // Use Supabase realtime presence or broadcast
+  sb.channel('typing_' + chatId).send({
+    type: 'broadcast',
+    event: 'typing',
+    payload: { user: window.state.user.id, userName: window.state.userProfile ? window.state.userProfile.display_name : 'Someone' }
+  });
+}
+
+function handleTypingBroadcast(chatId) {
+  var sb = getSupabase();
+  if (!sb) return;
+  sb.channel('typing_' + chatId).on('broadcast', { event: 'typing' }, function(payload) {
+    if (payload && payload.payload && payload.payload.user !== window.state.user.id) {
+      showTypingIndicator(chatId, payload.payload.userName || 'Someone');
+    }
+  }).subscribe();
+}
+
+// ===== CHAT SEARCH UI (M18) =====
+function filterChatMessages() {
+  var searchInput = document.getElementById('chatSearchInput');
+  var query = searchInput ? searchInput.value.trim() : '';
+  var clearBtn = document.getElementById('clearSearchBtn');
+  if (clearBtn) clearBtn.style.display = query ? 'block' : 'none';
+  
+  var chatId = window.state.currentChatId;
+  if (!chatId) return;
+  var chat = window.state.chats[chatId];
+  if (!chat) return;
+
+  var list = document.getElementById('chatMsgList');
+  if (!list) return;
+  list.innerHTML = '';
+  
+  var messages = query ? searchMessages(chatId, query) : chat.messages;
+  if (messages.length === 0) {
+    var empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;color:#999;padding:20px';
+    empty.textContent = query ? 'No messages match "' + query + '"' : 'No messages yet.';
+    list.appendChild(empty);
+    return;
+  }
+  messages.forEach(function(msg) {
+    var isSent = window.state.user && msg.from === window.state.user.id;
+    var div = document.createElement('div');
+    div.style.cssText = 'margin-bottom:8px;padding:8px 12px;border-radius:12px;max-width:80%;' +
+      (isSent ? 'margin-left:auto;background:#2d8a4e;color:white;text-align:right' : 'background:white;border:1px solid #e0e0e0');
+    div.innerHTML = query ? highlightSearchMatches(msg.text, query) : escHtml(msg.text);
+    var timeSpan = document.createElement('span');
+    timeSpan.style.cssText = 'display:block;font-size:0.65rem;opacity:0.6;margin-top:4px';
+    var d = new Date(msg.createdAt);
+    timeSpan.textContent = d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    div.appendChild(timeSpan);
+    list.appendChild(div);
+  });
+}
+
+function clearChatSearch() {
+  var searchInput = document.getElementById('chatSearchInput');
+  if (searchInput) searchInput.value = '';
+  var clearBtn = document.getElementById('clearSearchBtn');
+  if (clearBtn) clearBtn.style.display = 'none';
+  var chatId = window.state.currentChatId;
+  if (chatId) {
+    var chat = window.state.chats[chatId];
+    if (chat) renderChatMessages(chat);
+  }
+}
+
+function handleChatTyping() {
+  var chatId = window.state.currentChatId;
+  if (chatId) broadcastTyping(chatId);
+}
+
+// ===== MESSAGE SEARCH (M18) =====
+function searchMessages(chatId, query) {
+  var chat = window.state.chats[chatId];
+  if (!chat || !query) return [];
+  var q = query.toLowerCase();
+  return chat.messages.filter(function(m) {
+    return m.text && m.text.toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+function highlightSearchMatches(text, query) {
+  if (!query) return escHtml(text);
+  var escaped = escHtml(text);
+  var escapedQuery = escHtml(query);
+  var regex = new RegExp('(' + escJs(escapedQuery) + ')', 'gi');
+  return escaped.replace(regex, '<mark style="background:#fff59d;padding:0 2px">$1</mark>');
+}
+
 function markMessagesRead(chatId) {
+  var chat = window.state.chats[chatId];
+  if (!chat || !window.state.user) return;
+  var sb = getSupabase();
+  if (!sb) return;
+  var updated = false;
+  chat.messages.forEach(function(m) {
+    if (m.from !== window.state.user.id && !m.read) {
+      m.read = true;
+      updated = true;
+    }
+  });
+  if (!updated) return;
+  saveChatsToStorage();
+  var messagesToSync = chat.messages.map(function(m) {
+    return { from: m.from, text: m.text, created_at: new Date(m.createdAt).toISOString(), read: !!m.read };
+  });
+  withRetry(function() {
+    return sb.from('chats').update({ messages: messagesToSync }).eq('id', chatId);
+  }, { maxAttempts: 1, baseDelay: 300 }).catch(function() {});
+  var list = document.getElementById('chatMsgList');
+  if (list) {
+    var indicators = list.querySelectorAll('.msg-status-indicator');
+    indicators.forEach(function(ind) {
+      if (ind.textContent.indexOf('sent') !== -1 && ind.textContent.indexOf('read') === -1) {
+        ind.textContent = ' • ✓✓ read';
+        ind.style.color = '#2196f3';
+      }
+    });
+  }
+}
+
+function openChat(chatId, itemTitle) {
   var chat = window.state.chats[chatId];
   if (!chat || !window.state.user) return;
   var sb = getSupabase();

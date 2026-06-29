@@ -487,6 +487,38 @@ function attachSwipeGestures(cardEl, itemId) {
   }, { passive: true });
 }
 
+// ===== PUSH NOTIFICATION TOGGLE (M16) =====
+async function togglePushNotifs() {
+  var el = document.getElementById('togglePush');
+  if (!el) return;
+  if (isPushSubscribed()) {
+    await unsubscribeFromPush();
+    el.className = 'toggle-switch';
+    showToast('Push notifications off');
+  } else {
+    var perm = await requestNotificationPermission();
+    if (perm === 'granted') {
+      var ok = await subscribeToPush();
+      if (ok) {
+        el.className = 'toggle-switch on';
+        hapticMedium();
+        showToast('Push notifications enabled! 🔔');
+        registerBackgroundSync();
+      } else {
+        showToast('Push notifications not supported on this device.');
+      }
+    } else {
+      showToast('Notification permission denied.');
+    }
+  }
+}
+
+function restartOnboarding() {
+  closeModal('settingsModalOverlay');
+  localStorage.removeItem('geogive_onboarded');
+  showOnboarding();
+}
+
 function seedData() {
   var now = Date.now();
   window.state.items = [
