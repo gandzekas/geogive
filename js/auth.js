@@ -328,3 +328,9 @@ function saveSettings() {
   loadItemsFromSupabase();
   showToast('Settings saved! Connecting...');
 }
+
+function changeLang() {
+  var sel = document.getElementById('langSelector');
+  if (!sel) return;
+  setLang(sel.value);
+}

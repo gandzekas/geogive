@@ -489,6 +489,31 @@ function daysUntilExpiry(item) {
   return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
 }
 
+// ===== DARK MODE (M48) =====
+function isDarkMode() {
+  return localStorage.getItem('geogive_dark_mode') === 'true';
+}
+
+function setDarkMode(enabled) {
+  localStorage.setItem('geogive_dark_mode', enabled ? 'true' : 'false');
+  document.body.classList.toggle('dark-mode', enabled);
+  if (enabled) {
+    trackEvent('dark_mode_on', {});
+  }
+}
+
+function toggleDarkMode() {
+  var newState = !isDarkMode();
+  setDarkMode(newState);
+  showToast(newState ? '🌙 Dark mode on' : '☀️ Light mode on');
+}
+
+function initDarkMode() {
+  if (isDarkMode()) {
+    document.body.classList.add('dark-mode');
+  }
+}
+
 // ===== PROMOTED LISTINGS (M39) =====
 function isPromoted(item) {
   if (!item.promotedAt) return false;
@@ -595,6 +620,70 @@ async function initiatePayment(priceId, itemData) {
     handleError(e, 'payment');
     return false;
   }
+}
+
+// ===== COLLECTIONS (M45) =====
+function getCollections() {
+  try {
+    return JSON.parse(localStorage.getItem('geogive_collections') || '[]');
+  } catch(e) { return []; }
+}
+
+function saveCollections(collections) {
+  localStorage.setItem('geogive_collections', JSON.stringify(collections));
+}
+
+function createCollection(name, description) {
+  var collections = getCollections();
+  var col = {
+    id: 'col-' + Date.now(),
+    name: name,
+    description: description || '',
+    items: [],
+    userId: window.state.user ? window.state.user.id : 'anon',
+    createdAt: Date.now()
+  };
+  collections.push(col);
+  saveCollections(collections);
+  trackEvent('collection_created', { name: name });
+  showToast('📁 Collection "' + name + '" created!');
+  return col;
+}
+
+function addToCollection(collectionId, itemId) {
+  var collections = getCollections();
+  var col = collections.find(function(c) { return c.id === collectionId; });
+  if (!col) return false;
+  if (col.items.indexOf(itemId) === -1) {
+    col.items.push(itemId);
+    saveCollections(collections);
+    showToast('Added to "' + col.name + '"');
+    hapticLight();
+  }
+  return true;
+}
+
+function removeFromCollection(collectionId, itemId) {
+  var collections = getCollections();
+  var col = collections.find(function(c) { return c.id === collectionId; });
+  if (!col) return;
+  col.items = col.items.filter(function(id) { return id !== itemId; });
+  saveCollections(collections);
+}
+
+function deleteCollection(collectionId) {
+  var collections = getCollections().filter(function(c) { return c.id !== collectionId; });
+  saveCollections(collections);
+  showToast('Collection deleted');
+}
+
+function getCollectionItems(collectionId) {
+  var collections = getCollections();
+  var col = collections.find(function(c) { return c.id === collectionId; });
+  if (!col) return [];
+  return window.state.items.filter(function(item) {
+    return col.items.indexOf(item.id) !== -1;
+  });
 }
 
 function shareReferralCode() {

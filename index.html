@@ -180,6 +180,19 @@
       </div>
     </div>
     <div class="text-center mt-12"><button class="btn-link" data-fn="closeModal" data-arg="settingsModalOverlay" type="button">Close</button></div>
+    <div class="notif-toggle-row" style="margin-top:12px">
+      <span class="label">🌙 Dark Mode</span>
+      <span class="toggle-switch" id="toggleDarkMode" data-fn="toggleDarkMode"></span>
+    </div>
+    <hr class="mt-16 mb-12">
+    <h4 class="notif-title">🌐 Language</h4>
+    <select id="langSelector" data-fn="changeLang" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:0.95rem">
+      <option value="en">🇬🇧 English</option>
+      <option value="es">🇪🇸 Español</option>
+      <option value="fr">🇫🇷 Français</option>
+      <option value="de">🇩🇪 Deutsch</option>
+      <option value="lt">🇱🇹 Lietuvių</option>
+    </select>
     <hr class="mt-16 mb-12">
     <h4 class="notif-title">� About GeoGive</h4>
     <button class="btn btn-sm btn-secondary btn-full" data-fn="restartOnboarding" type="button">Show Onboarding</button>
@@ -342,6 +355,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js?v=1780571000"></script>
 <script src="js/utils.js?v=1780571000"></script>
+<script src="js/i18n.js?v=1780571000"></script>
 <script src="js/geo.js?v=1780571000"></script>
 <script src="js/map.js?v=1780571000"></script>
 <script src="js/auth.js?v=1780571000"></script>

@@ -264,10 +264,37 @@ function renderProfile() {
   html += '</div>';
   html += '</div>';
 
-  // Admin section
+  // Share profile card (M43)
+  html += '<div style="margin-top:12px;text-align:center">';
+  html += '<button class="btn btn-sm btn-secondary" data-fn="shareProfileCard">📸 Share Profile Card</button>';
+  html += '</div>';
+
+  // Admin section (M49 expanded)
   if (isAdmin) {
     html += '<div style="margin-top:24px;padding:16px;background:#fff3e0;border-radius:12px">';
-    html += '<h4 style="margin-bottom:12px">🛡️ Admin — Report Queue</h4>';
+    html += '<h4 style="margin-bottom:12px">🛡️ Admin Dashboard</h4>';
+
+    // Platform stats (local)
+    var totalItems = window.state.items ? window.state.items.length : 0;
+    var activeItems = window.state.items ? window.state.items.filter(function(i) { return i.status === 'available'; }).length : 0;
+    var totalUsers = localStorage.getItem('geogive_admin_user_count') || '—';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+    html += '<div style="background:white;padding:10px;border-radius:8px;text-align:center"><div style="font-size:1.4rem;font-weight:700">' + totalItems + '</div><div style="font-size:0.7rem;color:#999">Total Items</div></div>';
+    html += '<div style="background:white;padding:10px;border-radius:8px;text-align:center"><div style="font-size:1.4rem;font-weight:700">' + activeItems + '</div><div style="font-size:0.7rem;color:#999">Active</div></div>';
+    html += '<div style="background:white;padding:10px;border-radius:8px;text-align:center"><div style="font-size:1.4rem;font-weight:700">' + totalUsers + '</div><div style="font-size:0.7rem;color:#999">Users</div></div>';
+    html += '</div>';
+
+    // Broadcast announcement
+    html += '<div style="margin-bottom:12px">';
+    html += '<label style="font-size:0.8rem;color:#666">📢 Broadcast Message</label>';
+    html += '<div style="display:flex;gap:8px;margin-top:4px">';
+    html += '<input type="text" id="adminBroadcast" placeholder="Send to all users..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem">';
+    html += '<button class="btn btn-sm btn-primary" data-fn="adminBroadcast">Send</button>';
+    html += '</div>';
+    html += '</div>';
+
+    // Report queue
+    html += '<h5 style="margin-bottom:8px;font-size:0.9rem">📋 Pending Reports</h5>';
     html += '<div id="adminReportQueue"><p style="color:#999">Loading...</p></div>';
     html += '</div>';
   }
@@ -275,6 +302,142 @@ function renderProfile() {
   container.innerHTML = html;
 
   if (isAdmin) loadAdminReports();
+}
+
+// ===== SHAREABLE PROFILE CARD (M43) =====
+async function shareProfileCard() {
+  var user = window.state.user;
+  if (!user) return;
+  var trust = calculateTrustScore(user.id);
+  var trustLevel = getTrustLevel(user.id);
+  var bio = user.bio || 'GeoGive community member';
+  var listings = window.state.items.filter(function(i) { return i.userId === user.id; });
+  var followers = getFollowing(user.id).length;
+
+  // Generate card via Canvas
+  var canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 400;
+  var ctx = canvas.getContext('2d');
+
+  // Background gradient
+  var grad = ctx.createLinearGradient(0, 0, 600, 400);
+  grad.addColorStop(0, '#4a90d9');
+  grad.addColorStop(1, '#2c5f8a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 600, 400);
+
+  // Card background
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.beginPath();
+  ctx.roundRect(30, 30, 540, 340, 16);
+  ctx.fill();
+
+  // Avatar circle
+  ctx.fillStyle = '#4a90d9';
+  ctx.beginPath();
+  ctx.arc(100, 100, 40, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 32px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText((user.name || 'U')[0].toUpperCase(), 100, 112);
+
+  // Name
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(user.name || 'Anonymous', 160, 95);
+
+  // Trust badge
+  ctx.font = '14px sans-serif';
+  ctx.fillStyle = '#666';
+  ctx.fillText(trustLevel + '  ⭐ ' + trust + ' trust', 160, 120);
+
+  // Bio
+  ctx.fillStyle = '#555';
+  ctx.font = '15px sans-serif';
+  var words = bio.split(' ');
+  var line = '';
+  var y = 170;
+  for (var i = 0; i < words.length; i++) {
+    var test = line + words[i] + ' ';
+    if (ctx.measureText(test).width > 480) {
+      ctx.fillText(line, 60, y);
+      line = words[i] + ' ';
+      y += 22;
+    } else {
+      line = test;
+    }
+  }
+  ctx.fillText(line, 60, y);
+
+  // Stats
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillText(listings.length, 120, 250);
+  ctx.fillText(followers, 260, 250);
+  ctx.fillText(trust, 400, 250);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#888';
+  ctx.fillText('Listings', 120, 270);
+  ctx.fillText('Followers', 260, 270);
+  ctx.fillText('Trust', 400, 270);
+
+  // Branding
+  ctx.fillStyle = '#4a90d9';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText('🌍 GeoGive', 60, 340);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#999';
+  ctx.fillText(window.location.origin, 60, 360);
+
+  // Download
+  canvas.toBlob(function(blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'geogive-profile-' + (user.name || 'user') + '.png';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Profile card saved! 📸');
+  });
+}
+
+// ===== ADMIN BROADCAST (M49) =====
+function adminBroadcast() {
+  var input = document.getElementById('adminBroadcast');
+  if (!input || !input.value.trim()) return;
+  var msg = input.value.trim();
+  // Store broadcast in localStorage — all users see it on next load
+  localStorage.setItem('geogive_admin_broadcast', JSON.stringify({
+    message: msg,
+    timestamp: Date.now(),
+    from: window.state.user ? window.state.user.name : 'Admin'
+  }));
+  // Show it immediately
+  showToast('📢 Broadcast sent to all users!');
+  input.value = '';
+  trackEvent('admin_broadcast', { message: msg });
+}
+
+function checkAdminBroadcast() {
+  try {
+    var broadcast = JSON.parse(localStorage.getItem('geogive_admin_broadcast') || 'null');
+    if (broadcast && broadcast.message) {
+      // Show if less than 24h old
+      if (Date.now() - broadcast.timestamp < 24 * 60 * 60 * 1000) {
+        var banner = document.getElementById('adminBroadcastBanner');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'adminBroadcastBanner';
+          banner.style.cssText = 'background:#fff3e0;padding:10px 16px;text-align:center;font-size:0.85rem;border-bottom:2px solid #f57c00;position:sticky;top:0;z-index:200';
+          document.body.insertBefore(banner, document.body.firstChild);
+        }
+        banner.innerHTML = '📢 <strong>' + escHtml(broadcast.from) + ':</strong> ' + escHtml(broadcast.message) + ' <button onclick="this.parentElement.style.display=\'none\'" style="background:none;border:none;cursor:pointer;margin-left:8px;font-size:1rem">✕</button>';
+      }
+    }
+  } catch(e) {}
 }
 
 async function loadAdminReports() {

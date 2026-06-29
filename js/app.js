@@ -114,6 +114,12 @@ document.addEventListener('DOMContentLoaded', function() {
   // Pull-to-refresh on browse page (M3)
   setupPullToRefresh();
 
+  // Dark mode init (M48)
+  initDarkMode();
+
+  // Admin broadcast banner (M49)
+  if (typeof checkAdminBroadcast === 'function') checkAdminBroadcast();
+
   // Hide loading splash
   var splash = document.getElementById('appSplash');
   if (splash) splash.style.display = 'none';
@@ -231,6 +237,7 @@ window.handleEmailAuth = handleEmailAuth;
 window.handleLogout = handleLogout;
 window.openSettingsModal = openSettingsModal;
 window.saveSettings = saveSettings;
+window.changeLang = changeLang;
 window.setView = setView;
 window.updateRadiusLabel = updateRadiusLabel;
 window.applyFilters = applyFilters;
@@ -266,7 +273,24 @@ window.applyReferralCode = applyReferralCode;
 window.getReferralCount = getReferralCount;
 window.trackReferral = trackReferral;
 window.shareReferralCode = shareReferralCode;
+window.shareProfileCard = shareProfileCard;
 window.initiatePayment = initiatePayment;
+window.getCollections = getCollections;
+window.createCollection = createCollection;
+window.addToCollection = addToCollection;
+window.removeFromCollection = removeFromCollection;
+window.deleteCollection = deleteCollection;
+window.getCollectionItems = getCollectionItems;
+window.t = t;
+window.setLang = setLang;
+window.getCurrentLang = getCurrentLang;
+window.applyTranslations = applyTranslations;
+window.getAvailableLangs = getAvailableLangs;
+window.toggleDarkMode = toggleDarkMode;
+window.isDarkMode = isDarkMode;
+window.initDarkMode = initDarkMode;
+window.adminBroadcast = adminBroadcast;
+window.checkAdminBroadcast = checkAdminBroadcast;
 window.toggleBlockUser = toggleBlockUser;
 window.isFollowing = isFollowing;
 window.getFollowing = getFollowing;
