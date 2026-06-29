@@ -4,7 +4,7 @@
 
 ---
 
-## Phase 1: Polish & User Testing (Milestones 1–10)
+## Phase 1: Polish & User Testing
 
 - [ ] **M1** — Set up analytics dashboard (Plausible or Umami self-hosted) and integrate privacy-first tracking
 - [ ] **M2** — Implement onboarding tutorial with 3-step walkthrough for first-time users
@@ -17,9 +17,7 @@
 - [ ] **M9** — Implement swipe gestures on items (swipe to save/report)
 - [ ] **M10** — User testing session #1: observe 3 real users, collect friction points
 
----
-
-## Phase 2: Core Feature Expansion (Milestones 11–20)
+## Phase 2: Core Feature Expansion
 
 - [ ] **M11** — Add item categories with filter chips (Electronics, Clothes, Books, etc.)
 - [ ] **M12** — Implement item condition tags (New, Like New, Good, Fair)
@@ -32,9 +30,7 @@
 - [ ] **M19** — Add user ratings/reviews after completed giveaways
 - [ ] **M20** — Implement trust score system (completed giveaways, response rate, ratings)
 
----
-
-## Phase 3: Social & Engagement (Milestones 21–30)
+## Phase 3: Social & Engagement
 
 - [ ] **M21** — Add user profiles with bio, photo, location, and giveaway history
 - [ ] **M22** — Implement follower/following system
@@ -47,9 +43,7 @@
 - [ ] **M29** — Add "Nearby Items" map view with clustering (Leaflet.markercluster)
 - [ ] **M30** — User testing session #2: test social features, measure engagement
 
----
-
-## Phase 4: Performance & Reliability (Milestones 31–38)
+## Phase 4: Performance & Reliability
 
 - [ ] **M31** — Implement virtual scrolling for long item lists (1000+ items smooth)
 - [ ] **M32** — Add image lazy loading with IntersectionObserver and blur-up placeholders
@@ -60,9 +54,7 @@
 - [ ] **M37** — Implement code splitting per route (lazy-load non-critical JS)
 - [ ] **M38** — Add automated E2E tests (Playwright) for critical user flows
 
----
-
-## Phase 5: Monetization & Growth (Milestones 39–45)
+## Phase 5: Monetization & Growth
 
 - [ ] **M39** — Implement promoted listings (pay to boost item visibility for 24h)
 - [ ] **M40** — Add Stripe payment integration for promoted listings
@@ -72,9 +64,7 @@
 - [ ] **M44** — Implement SEO: dynamic meta tags, structured data (Schema.org), sitemap
 - [ ] **M45** — Add "Collections" — curated item bundles by theme (Moving sale, Student pack)
 
----
-
-## Phase 6: Platform Expansion (Milestones 46–50)
+## Phase 6: Platform Expansion
 
 - [ ] **M46** — Publish to Google Play Store (AAB ready, need store listing assets)
 - [ ] **M47** — Add i18n: support 5 languages (ES, DE, FR, PT, PL)
