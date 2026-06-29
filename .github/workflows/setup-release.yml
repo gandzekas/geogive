@@ -1,0 +1,105 @@
+name: One-Time Release Setup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+
+jobs:
+  enable-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable GitHub Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Enable Pages using the REST API
+          REPO="${{ github.repository }}"
+          
+          # Try to create Pages site
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/pages" \
+            -d '{"build_type":"workflow","source":{"branch":"main","path":"/"}}")
+          
+          echo "Pages enable response: HTTP ${STATUS}"
+          
+          if [ "$STATUS" = "201" ]; then
+            echo "✅ GitHub Pages enabled successfully (workflow build type)"
+          elif [ "$STATUS" = "409" ]; then
+            echo "ℹ️ GitHub Pages already enabled"
+          else
+            echo "⚠️ Pages enable returned HTTP ${STATUS} — may need manual enable"
+            # Try legacy method
+            curl -s -X POST \
+              -H "Authorization: token ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/pages" \
+              -d '{"source":{"branch":"main","path":"/"}}' || true
+          fi
+
+  add-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate signing keystore and set secrets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          
+          # Generate keystore
+          STORE_PASS=$(openssl rand -base64 32 | tr -d '=/+' | head -c 44)
+          KEY_PASS=$(openssl rand -base64 32 | tr -d '=/+' | head -c 44)
+          
+          keytool -genkeypair \
+            -v \
+            -keystore geogive-release-key.jks \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -alias geogive \
+            -storepass "${STORE_PASS}" \
+            -keypass "${KEY_PASS}" \
+            -dname "CN=GeoGive,O=GeoGive,L=World,ST=World,C=US"
+          
+          # Base64 encode
+          KEYSTORE_B64=$(base64 -w0 geogive-release-key.jks)
+          
+          # Set secrets via GitHub API (need a PAT with repo scope)
+          # GITHUB_TOKEN can't set actions secrets — we need to use gh cli or a PAT
+          # Let's check if we can use the sealing key endpoint
+          
+          echo "⚠️ GITHUB_TOKEN cannot set Actions secrets."
+          echo "KEYSTORE_B64 length: ${#KEYSTORE_B64}"
+          echo "STORE_PASS: ${STORE_PASS}"
+          echo "KEY_PASS: ${KEY_PASS}"
+          echo ""
+          echo "To set these secrets, go to:"
+          echo "https://github.com/${REPO}/settings/secrets/actions"
+          echo ""
+          echo "Required secrets:"
+          echo "  GEOGIVE_KEYSTORE_BASE64: (the base64 string, ${#KEYSTORE_B64} chars)"
+          echo "  GEOGIVE_STORE_PASSWORD: ${STORE_PASS}"
+          echo "  GEOGIVE_KEY_PASSWORD: ${KEY_PASS}"
+          
+          # Save to job summary for easy copy
+          echo "## 🔑 Signing Secrets" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "GEOGIVE_STORE_PASSWORD=${STORE_PASS}" >> $GITHUB_STEP_SUMMARY
+          echo "GEOGIVE_KEY_PASSWORD=${KEY_PASS}" >> $GITHUB_STEP_SUMMARY
+          echo "GEOGIVE_KEYSTORE_BASE64=${KEYSTORE_B64}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          # Also upload the keystore and b64 as artifacts
+          echo "${KEYSTORE_B64}" > keystore_base64.txt
+          echo "STORE_PASS=${STORE_PASS}" > signing-passwords.txt
+          echo "KEY_PASS=${KEY_PASS}" >> signing-passwords.txt
