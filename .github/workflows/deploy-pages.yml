@@ -34,16 +34,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
-          include: |
-            index.html
-            manifest.json
-            sw.js
-            icon-192.png
-            icon-512.png
-            css/**
-            js/**
-            .well-known/**
-            assetlinks.json
 
       - name: Deploy to GitHub Pages
         id: deployment
