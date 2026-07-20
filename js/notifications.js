@@ -28,7 +28,7 @@ function addNotif(title, body, onClick) {
 function urlBase64ToUint8Array(base64String) {
   var padding = '='.repeat((4 - base64String.length % 4) % 4);
   var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  var rawData = window.atob(base64String);
+  var rawData = window.atob(base64);
   var outputArray = new Uint8Array(rawData.length);
   for (var i = 0; i < rawData.length; i++) {
     outputArray[i] = rawData.charCodeAt(i);
@@ -38,16 +38,24 @@ function urlBase64ToUint8Array(base64String) {
 
 async function subscribeToPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  // VAPID public key must be set before push can work.
+  // Set localStorage.geogive_vapid_key to your base64url-encoded VAPID public key.
+  var VAPID_PUBLIC_KEY = localStorage.getItem('geogive_vapid_key') || '';
+  if (!VAPID_PUBLIC_KEY) {
+    console.warn('GeoGive: No VAPID public key configured. Set localStorage.geogive_vapid_key.');
+    return false;
+  }
   try {
     var reg = await navigator.serviceWorker.ready;
     var subscription = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: null // Would be set to VAPID public key in production
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
     // Store subscription locally (would be sent to server in production)
     localStorage.setItem('geogive_push_subscription', JSON.stringify(subscription));
     return true;
   } catch(e) {
+    console.warn('GeoGive: Push subscription failed:', e);
     return false;
   }
 }

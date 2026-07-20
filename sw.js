@@ -21,6 +21,7 @@ var PRECACHE_URLS = [
   '/js/notifications.js',
   '/js/offline.js',
   '/js/router.js',
+  '/js/feed.js',
   '/js/app.js',
   '/manifest.json',
   '/icon-192.png',

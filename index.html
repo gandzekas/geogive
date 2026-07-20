@@ -116,18 +116,18 @@
   <div class="page" id="page-profile"><div id="profileContent"></div></div>
   <div class="page" id="page-chat"><div id="chatContent"></div></div>
   <div class="page" id="page-feed">
-    <h2 class="section-title">� Give Feed</h2>
+    <h2 class="section-title">🏠 Give Feed</h2>
     <p class="text-muted" style="font-size:0.85rem">Latest from people you follow</p>
     <div id="feedList"></div>
   </div>
 </main>
 
 <nav class="bottom-nav">
-  <button class="nav-tab active" data-page="browse" data-fn="switchPage" data-arg="browse" type="button"><span class="nav-icon">🗺️</span> Browse</button>
-  <button class="nav-tab" data-page="feed" data-fn="switchPage" data-arg="feed" type="button"><span class="nav-icon">🏠</span> Feed</button>
-  <button class="nav-tab" data-page="post" data-fn="switchPage" data-arg="post" type="button"><span class="nav-icon">➕</span> Post</button>
-  <button class="nav-tab" data-page="mylistings" data-fn="switchPage" data-arg="mylistings" type="button"><span class="nav-icon">📦</span> My Listings</button>
-  <button class="nav-tab" data-page="requests" data-fn="switchPage" data-arg="requests" id="requestsTab" type="button"><span class="nav-icon">�</span> Requests <span class="notif-badge hidden" id="requestsBadge">0</span></button>
+  <button class="nav-tab active" data-page="browse" data-fn="switchPage" data-arg="browse" type="button"><span class="nav-icon">🗺️</span> <span data-i18n="browse">Browse</span></button>
+  <button class="nav-tab" data-page="feed" data-fn="switchPage" data-arg="feed" type="button"><span class="nav-icon">🏠</span> <span data-i18n="feed">Feed</span></button>
+  <button class="nav-tab" data-page="post" data-fn="switchPage" data-arg="post" type="button"><span class="nav-icon">➕</span> <span data-i18n="post">Post</span></button>
+  <button class="nav-tab" data-page="mylistings" data-fn="switchPage" data-arg="mylistings" type="button"><span class="nav-icon">📦</span> <span data-i18n="listings">My Listings</span></button>
+  <button class="nav-tab" data-page="requests" data-fn="switchPage" data-arg="requests" id="requestsTab" type="button"><span class="nav-icon">📨</span> <span data-i18n="requests">Requests</span> <span class="notif-badge hidden" id="requestsBadge">0</span></button>
 </nav>
 
 <div id="toast" class="toast"></div>
@@ -155,37 +155,38 @@
 <!-- Settings Modal -->
 <div class="modal-overlay hidden" id="settingsModalOverlay">
   <div class="form-card modal-sm">
-    <h3 class="section-title">⚙️ Settings</h3>
-    <div class="form-group"><label>Supabase URL</label><input type="text" id="settingsSbUrl" placeholder="https://your-project.supabase.co"></div>
-    <div class="form-group"><label>Supabase Anon Key</label><input type="text" id="settingsSbKey" placeholder="your-anon-key"></div>
+    <h3 class="section-title">⚙️ <span data-i18n="settings">Settings</span></h3>
+    <div class="form-group"><label data-i18n="supabaseUrl">Supabase URL</label><input type="text" id="settingsSbUrl" placeholder="https://your-project.supabase.co"></div>
+    <div class="form-group"><label data-i18n="supabaseKey">Supabase Anon Key</label><input type="text" id="settingsSbKey" placeholder="your-anon-key"></div>
+    <div class="form-group"><label>🌐 VAPID Key (for push)</label><input type="text" id="settingsVapidKey" placeholder="base64url VAPID public key"></div>
     <div id="settingsError" class="error-text hidden"></div>
-    <button class="btn btn-primary btn-full" data-fn="saveSettings" type="button">Save &amp; Connect</button>
+    <button class="btn btn-primary btn-full" data-fn="saveSettings" type="button" data-i18n="saveConnect">Save &amp; Connect</button>
     <div class="notif-section">
-      <h4 class="notif-title">🔔 Notifications</h4>
+      <h4 class="notif-title">🔔 <span data-i18n="notifications">Notifications</span></h4>
       <div class="notif-toggle-row">
-        <span class="label">New Messages</span>
+        <span class="label" data-i18n="newMessages">New Messages</span>
         <span class="toggle-switch on" id="toggleMessages" data-fn="toggleNotifPref" data-arg="messages"></span>
       </div>
       <div class="notif-toggle-row">
-        <span class="label">Nearby Items</span>
+        <span class="label" data-i18n="nearbyItems">Nearby Items</span>
         <span class="toggle-switch on" id="toggleNearby" data-fn="toggleNotifPref" data-arg="nearby"></span>
       </div>
       <div class="notif-toggle-row">
-        <span class="label">Request Updates</span>
+        <span class="label" data-i18n="requestUpdates">Request Updates</span>
         <span class="toggle-switch on" id="toggleRequests" data-fn="toggleNotifPref" data-arg="requests"></span>
       </div>
       <div class="notif-toggle-row">
-        <span class="label">� Push Notifications</span>
+        <span class="label">🔔 <span data-i18n="pushNotifs">Push Notifications</span></span>
         <span class="toggle-switch" id="togglePush" data-fn="togglePushNotifs"></span>
       </div>
     </div>
-    <div class="text-center mt-12"><button class="btn-link" data-fn="closeModal" data-arg="settingsModalOverlay" type="button">Close</button></div>
+    <div class="text-center mt-12"><button class="btn-link" data-fn="closeModal" data-arg="settingsModalOverlay" type="button" data-i18n="close">Close</button></div>
     <div class="notif-toggle-row" style="margin-top:12px">
-      <span class="label">🌙 Dark Mode</span>
+      <span class="label">🌙 <span data-i18n="darkMode">Dark Mode</span></span>
       <span class="toggle-switch" id="toggleDarkMode" data-fn="toggleDarkMode"></span>
     </div>
     <hr class="mt-16 mb-12">
-    <h4 class="notif-title">🌐 Language</h4>
+    <h4 class="notif-title">🌐 <span data-i18n="language">Language</span></h4>
     <select id="langSelector" data-fn="changeLang" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:0.95rem">
       <option value="en">🇬🇧 English</option>
       <option value="es">🇪🇸 Español</option>
@@ -194,7 +195,7 @@
       <option value="lt">🇱🇹 Lietuvių</option>
     </select>
     <hr class="mt-16 mb-12">
-    <h4 class="notif-title">� About GeoGive</h4>
+    <h4 class="notif-title">ℹ️ About GeoGive</h4>
     <button class="btn btn-sm btn-secondary btn-full" data-fn="restartOnboarding" type="button">Show Onboarding</button>
     <hr class="mt-16 mb-12">
     <h4 class="notif-title">📊 Your Activity (Private)</h4>
@@ -332,7 +333,7 @@
 <!-- Community Guidelines Modal (M27) -->
 <div class="modal-overlay hidden" id="guidelinesModalOverlay">
   <div class="form-card modal-sm">
-    <h3 class="section-title">� Community Guidelines</h3>
+    <h3 class="section-title">📜 Community Guidelines</h3>
     <div class="safety-box">
       <h4>Be Kind &amp; Respectful</h4>
       <ul class="safety-list" style="padding-left:18px">

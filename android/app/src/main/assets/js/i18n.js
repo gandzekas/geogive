@@ -54,20 +54,7 @@ var I18N = {
     login: 'Log In',
     signup: 'Sign Up',
     welcome: 'Welcome to GeoGive',
-    welcomeDesc: 'Join your local community giving economy',
-    requests: 'Requests',
-    supabaseUrl: 'Supabase URL',
-    supabaseKey: 'Supabase Anon Key',
-    saveConnect: 'Save & Connect',
-    notifications: 'Notifications',
-    newMessages: 'New Messages',
-    nearbyItems: 'Nearby Items',
-    requestUpdates: 'Request Updates',
-    pushNotifs: 'Push Notifications',
-    darkMode: 'Dark Mode',
-    language: 'Language',
-    listings: 'My Listings',
-    settings: 'Settings'
+    welcomeDesc: 'Join your local community giving economy'
   },
   es: {
     appName: 'GeoGive',
@@ -123,20 +110,7 @@ var I18N = {
     login: 'Iniciar Sesión',
     signup: 'Registrarse',
     welcome: 'Bienvenido a GeoGive',
-    welcomeDesc: 'Únete a la economía de regalo de tu comunidad local',
-    requests: 'Solicitudes',
-    supabaseUrl: 'URL de Supabase',
-    supabaseKey: 'Clave Anon de Supabase',
-    saveConnect: 'Guardar y Conectar',
-    notifications: 'Notificaciones',
-    newMessages: 'Mensajes Nuevos',
-    nearbyItems: 'Artículos Cercanos',
-    requestUpdates: 'Actualizaciones de Solicitudes',
-    pushNotifs: 'Notificaciones Push',
-    darkMode: 'Modo Oscuro',
-    language: 'Idioma',
-    listings: 'Mis Publicaciones',
-    settings: 'Ajustes'
+    welcomeDesc: 'Únete a la economía de regalo de tu comunidad local'
   },
   fr: {
     appName: 'GeoGive',
@@ -192,20 +166,7 @@ var I18N = {
     login: 'Connexion',
     signup: 'S\'inscrire',
     welcome: 'Bienvenue sur GeoGive',
-    welcomeDesc: 'Rejoignez l\'économie du don de votre communauté locale',
-    requests: 'Demandes',
-    supabaseUrl: 'URL Supabase',
-    supabaseKey: 'Clé Anon Supabase',
-    saveConnect: 'Enregistrer et Connecter',
-    notifications: 'Notifications',
-    newMessages: 'Nouveaux Messages',
-    nearbyItems: 'Articles à Proximité',
-    requestUpdates: 'Mises à jour des Demandes',
-    pushNotifs: 'Notifications Push',
-    darkMode: 'Mode Sombre',
-    language: 'Langue',
-    listings: 'Mes Annonces',
-    settings: 'Paramètres'
+    welcomeDesc: 'Rejoignez l\'économie du don de votre communauté locale'
   },
   de: {
     appName: 'GeoGive',
@@ -261,20 +222,7 @@ var I18N = {
     login: 'Anmelden',
     signup: 'Registrieren',
     welcome: 'Willkommen bei GeoGive',
-    welcomeDesc: 'Tritt der Schenk-Ökonomie deiner lokalen Gemeinschaft bei',
-    requests: 'Anfragen',
-    supabaseUrl: 'Supabase URL',
-    supabaseKey: 'Supabase Anon-Schlüssel',
-    saveConnect: 'Speichern & Verbinden',
-    notifications: 'Benachrichtigungen',
-    newMessages: 'Neue Nachrichten',
-    nearbyItems: 'Artikel in der Nähe',
-    requestUpdates: 'Anfrage-Updates',
-    pushNotifs: 'Push-Benachrichtigungen',
-    darkMode: 'Dunkler Modus',
-    language: 'Sprache',
-    listings: 'Meine Einträge',
-    settings: 'Einstellungen'
+    welcomeDesc: 'Tritt der Schenk-Ökonomie deiner lokalen Gemeinschaft bei'
   },
   lt: {
     appName: 'GeoGive',
@@ -330,20 +278,7 @@ var I18N = {
     login: 'Prisijungti',
     signup: 'Registruotis',
     welcome: 'Sveiki atvykę į GeoGive',
-    welcomeDesc: 'Prisijunkite prie savo vietos bendruomenės dovanų ekonomijos',
-    requests: 'Užklausos',
-    supabaseUrl: 'Supabase URL',
-    supabaseKey: 'Supabase Anon Raktas',
-    saveConnect: 'Išsaugoti ir Jungtis',
-    notifications: 'Pranešimai',
-    newMessages: 'Naujos Žinutės',
-    nearbyItems: 'Artimiausi Daiktai',
-    requestUpdates: 'Užklausų Atnaujinimai',
-    pushNotifs: 'Push Pranešimai',
-    darkMode: 'Tamsus Režimas',
-    language: 'Kalba',
-    listings: 'Mano Skelbimai',
-    settings: 'Nustatymai'
+    welcomeDesc: 'Prisijunkite prie savo vietos bendruomenės dovanų ekonomijos'
   }
 };
 

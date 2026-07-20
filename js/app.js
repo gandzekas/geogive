@@ -124,6 +124,14 @@ document.addEventListener('DOMContentLoaded', function() {
   var splash = document.getElementById('appSplash');
   if (splash) splash.style.display = 'none';
 
+  // Apply saved language on startup (M47)
+  if (typeof applyTranslations === 'function') {
+    // Set the selector to match saved lang
+    var langSel = document.getElementById('langSelector');
+    if (langSel) langSel.value = getCurrentLang();
+    applyTranslations();
+  }
+
   // ===== DELEGATED EVENT HANDLER (replaces inline onclick/oninput/onchange/onsubmit) =====
   document.addEventListener('click', function(e) {
     var el = e.target.closest('[data-fn]');
@@ -296,7 +304,6 @@ window.isFollowing = isFollowing;
 window.getFollowing = getFollowing;
 window.getFeedItems = getFeedItems;
 window.getFollowers = getFollowers;
-window.toggleBlockUser = toggleBlockUser;
 window.showSafetyTips = showSafetyTips;
 window.closeSafetyModal = closeSafetyModal;
 window.showToast = showToast;

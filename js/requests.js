@@ -17,7 +17,7 @@ async function createRequest(item) {
     var { data: reqData, error } = await withRetry(function() {
       return sb.from('requests').insert({
         item_id: item.id, requester_id: window.state.user.id, owner_id: item.ownerId,
-        item_title: item.title, requester_name: (window.state.userProfile && window.state.userProfile.display_name) || window.state.user.email.split('@')[0],
+        item_title: item.title, requester_name: (window.state.userProfile && window.state.userProfile.display_name) || (window.state.user.email ? window.state.user.email.split('@')[0] : 'User'),
         owner_name: item.ownerName, status: 'pending', created_at: new Date().toISOString()
       }).select().single();
     }, { maxAttempts: 2, baseDelay: 500 });

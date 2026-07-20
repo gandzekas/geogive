@@ -184,7 +184,7 @@ async function saveItemToSupabase(item) {
     item.ownerId = window.state.user.id;
     item.ownerName =
       (window.state.userProfile && window.state.userProfile.display_name) ||
-      window.state.user.email.split("@")[0];
+      (window.state.user.email ? window.state.user.email.split("@")[0] : 'You');
     item.createdAt = new Date(data.created_at).getTime();
     if (data.lat) item.lat = data.lat;
     if (data.lng) item.lng = data.lng;

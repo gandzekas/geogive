@@ -364,7 +364,7 @@ function loadScript(src) {
     var existing = document.querySelector('script[src="' + src + '"]');
     if (existing) { resolve(); return; }
     var script = document.createElement('script');
-    script.src = src + '?v=' + Date.now();
+    script.src = src;
     script.onload = resolve;
     script.onerror = reject;
     document.body.appendChild(script);
@@ -399,7 +399,7 @@ function calculateTrustScore(userId) {
 }
 
 function getTrustLevel(score) {
-  if (score >= 80) return { level: 'Trusted', color: '#2d8a4e', icon: '�️' };
+  if (score >= 80) return { level: 'Trusted', color: '#2d8a4e', icon: '🛡️' };
   if (score >= 60) return { level: 'Reliable', color: '#4caf50', icon: '✓' };
   if (score >= 40) return { level: 'Newcomer', color: '#ff9800', icon: '🌱' };
   return { level: 'Unverified', color: '#9e9e9e', icon: '?' };
@@ -455,7 +455,7 @@ function toggleFollow(userId) {
     showToast('Unfollowed');
   } else {
     list.unshift(userId);
-    showToast('Following! �');
+    showToast('Following! ❤️');
     hapticMedium();
   }
   saveFollowing(list);
@@ -685,6 +685,48 @@ function getCollectionItems(collectionId) {
     return col.items.indexOf(item.id) !== -1;
   });
 }
+
+// Show a modal to add an item to an existing collection or create a new one (M45)
+function openAddToCollection(itemId) {
+  if (!window.state.user) { openAuthModal(); showToast('Please sign in first.'); return; }
+  var collections = getCollections();
+  var content = document.getElementById('itemModalContent');
+  var overlay = document.getElementById('itemModalOverlay');
+  if (!content || !overlay) return;
+  var body = '<div style="padding:16px">';
+  body += '<h3 style="margin-bottom:12px">📁 Add to Collection</h3>';
+  if (collections.length === 0) {
+    body += '<p style="color:#999;margin-bottom:12px">No collections yet.</p>';
+  } else {
+    collections.forEach(function(c) {
+      var inCol = c.items.indexOf(itemId) !== -1;
+      body += '<button class="btn btn-sm ' + (inCol ? 'btn-primary' : 'btn-secondary') + '" style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px" data-fn="addToCollection" data-arg-expr="escJs(c.id)" data-arg2-expr="escJs(itemId)">' + escHtml(c.name) + ' <span>' + (inCol ? '✓ Added' : c.items.length) + '</span></button>';
+    });
+  }
+  body += '<div style="display:flex;gap:8px;align-items:center;margin-top:8px">';
+  body += '<input id="quickCollectionName" type="text" placeholder="New collection..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem">';
+  body += '<button class="btn btn-sm btn-primary" data-fn="createAndAddToCollection" data-arg-expr="escJs(itemId)">+ Create</button>';
+  body += '</div>';
+  body += '<button class="btn btn-secondary btn-full" data-fn="closeModal" data-arg="itemModalOverlay" style="margin-top:12px">Done</button>';
+  body += '</div>';
+  content.innerHTML = body;
+  overlay.style.display = 'flex';
+}
+
+// Create a collection and add the item to it (M45)
+function createAndAddToCollection(itemId) {
+  var inp = document.getElementById('quickCollectionName');
+  if (!inp) return;
+  var name = inp.value.trim();
+  if (!name) { showToast('Enter a name.'); return; }
+  var col = createCollection(name, '');
+  addToCollection(col.id, itemId);
+  renderProfile();
+  openAddToCollection(itemId);
+}
+
+window.openAddToCollection = openAddToCollection;
+window.createAndAddToCollection = createAndAddToCollection;
 
 function shareReferralCode() {
   var code = getReferralCode();

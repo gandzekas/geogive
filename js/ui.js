@@ -122,6 +122,15 @@ function openItemDetail(itemId) {
     body += '<button class="btn btn-secondary" style="width:100%;padding:12px;font-size:1rem;margin-top:8px" data-fn="closeModal" data-arg="itemModalOverlay">🚩 Report</button>';
   }
 
+  // Collections + safety actions (available for any item)
+  if (!isOwn) {
+    body += '<button class="btn btn-secondary" style="width:100%;padding:12px;font-size:1rem;margin-top:8px" data-fn="openAddToCollection" data-arg-expr="escJs(item.id)">📁 Add to Collection</button>';
+    body += '<button class="btn btn-secondary" style="width:100%;padding:12px;font-size:1rem;margin-top:8px" data-fn="openReportModal" data-arg-expr="escJs(item.ownerId)" data-arg2-expr="escJs(item.id)">🚩 Report</button>';
+    body += '<button class="btn btn-secondary" style="width:100%;padding:12px;font-size:1rem;margin-top:8px" data-fn="toggleBlockUser" data-arg-expr="escJs(item.ownerId)">🚫 Block User</button>';
+  } else {
+    body += '<button class="btn btn-secondary" style="width:100%;padding:12px;font-size:1rem;margin-top:8px" data-fn="openAddToCollection" data-arg-expr="escJs(item.id)">📁 Add to Collection</button>';
+  }
+
   body += '</div>';
   content.innerHTML = body;
   document.getElementById('itemModalOverlay').style.display = 'flex';
@@ -238,9 +247,6 @@ function renderBrowse() {
   // Store all filtered items for pagination
   window.state.allFilteredItems = items;
 
-  // Store all filtered items for pagination
-  window.state.allFilteredItems = items;
-
   // Reset pagination on new filter/search
   if (!window.state.isLoadingMore) {
     window.state.browsePage = 1;
@@ -347,7 +353,7 @@ function renderMyListings() {
     if (promoted) html += '<span class="badge" style="background:#fff3e0;color:#e65100">⭐ Promoted</span>';
     if (!expired) html += '<button class="btn btn-sm btn-secondary" data-fn="bumpItem" data-arg-expr="escJs(item.id)">⬆️ Bump</button>';
     if (!expired) html += '<button class="btn btn-sm" style="background:#f5a623;color:white" data-fn="promoteItem" data-arg-expr="escJs(item.id)">⭐ Promote</button>';
-    html += '<button class="btn btn-sm btn-danger" data-fn="deleteItem" data-arg-expr="escJs(item.id)">�️ Delete</button>';
+    html += '<button class="btn btn-sm btn-danger" data-fn="deleteItem" data-arg-expr="escJs(item.id)">🗑️ Delete</button>';
     html += '</div>';
   });
   container.innerHTML = html;
@@ -406,10 +412,10 @@ function showRetryUI(message, onRetry) {
 // ===== EMPTY STATES (M4) =====
 function getEmptyStateConfig(view) {
   var configs = {
-    browse: { icon: '🔍', title: 'No Items Nearby', message: 'Try increasing the search radius or be the first to list something!', action: { text: '� Post an Item', fn: 'switchPage', arg: 'post' } },
-    mylistings: { icon: '�', title: 'No Listings Yet', message: "You haven't posted any items. Share something with your community!", action: { text: '🎁 Post Your First Item', fn: 'switchPage', arg: 'post' } },
-    requests: { icon: '�', title: 'No Requests', message: 'Request items from the Browse tab to see them here.', action: { text: '�️ Browse Items', fn: 'switchPage', arg: 'browse' } },
-    chats: { icon: '💬', title: 'No Messages', message: 'Start a conversation by requesting an item!', action: { text: '�️ Browse Items', fn: 'switchPage', arg: 'browse' } },
+    browse: { icon: '🔍', title: 'No Items Nearby', message: 'Try increasing the search radius or be the first to list something!', action: { text: '📦 Post an Item', fn: 'switchPage', arg: 'post' } },
+    mylistings: { icon: '📦', title: 'No Listings Yet', message: "You haven't posted any items. Share something with your community!", action: { text: '🎁 Post Your First Item', fn: 'switchPage', arg: 'post' } },
+    requests: { icon: '📨', title: 'No Requests', message: 'Request items from the Browse tab to see them here.', action: { text: '🗺️ Browse Items', fn: 'switchPage', arg: 'browse' } },
+    chats: { icon: '💬', title: 'No Messages', message: 'Start a conversation by requesting an item!', action: { text: '🗺️ Browse Items', fn: 'switchPage', arg: 'browse' } },
     search: { icon: '🔍', title: 'No Results', message: 'Try different keywords or broaden your search.', action: null }
   };
   return configs[view] || configs.browse;

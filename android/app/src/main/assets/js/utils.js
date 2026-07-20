@@ -207,6 +207,7 @@ function isFavorite(itemId) {
 }
 
 function toggleFavorite(itemId) {
+  hapticMedium();
   var favs = getFavorites();
   var id = String(itemId);
   var idx = favs.indexOf(id);
@@ -308,8 +309,397 @@ function trackViewedItem(itemId) {
   } catch(e) {}
 }
 
+// ===== ANALYTICS DASHBOARD =====
+function renderAnalyticsDashboard() {
+  try {
+    var events = JSON.parse(localStorage.getItem('geogive_analytics') || '[]');
+    var sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    var lastWeekEvents = events.filter(function(e) { return e.timestamp >= sevenDaysAgo; });
+
+    // Count by type
+    var pageViews = events.filter(function(e) { return e.event === 'page_view'; }).length;
+    var itemsPosted = events.filter(function(e) { return e.event === 'item_posted'; }).length;
+    var requestsSent = events.filter(function(e) { return e.event === 'request_sent'; }).length;
+    var signIns = events.filter(function(e) { return e.event === 'user_signed_in'; }).length;
+
+    // Most active day in last 7 days
+    var dayCounts = {};
+    lastWeekEvents.forEach(function(e) {
+      var d = new Date(e.timestamp);
+      var dayKey = d.toLocaleDateString('en-US', { weekday: 'short' });
+      dayCounts[dayKey] = (dayCounts[dayKey] || 0) + 1;
+    });
+    var mostActive = '—';
+    var maxCount = 0;
+    Object.keys(dayCounts).forEach(function(day) {
+      if (dayCounts[day] > maxCount) { maxCount = dayCounts[day]; mostActive = day + ' (' + maxCount + ')'; }
+    });
+
+    // Update DOM
+    var set = function(id, val) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+    set('analyticsTotal', events.length);
+    set('analyticsPageViews', pageViews);
+    set('analyticsItemsPosted', itemsPosted);
+    set('analyticsRequests', requestsSent);
+    set('analyticsSignIns', signIns);
+    set('analyticsLastWeek', lastWeekEvents.length);
+    set('analyticsMostActive', mostActive);
+  } catch(e) { log('renderAnalyticsDashboard error:', e); }
+}
+
+function clearAnalyticsData() {
+  try {
+    localStorage.removeItem('geogive_analytics');
+    renderAnalyticsDashboard();
+    showToast('Analytics data cleared.');
+  } catch(e) { showToast('Failed to clear data.'); }
+}
+
+// ===== DYNAMIC SCRIPT LOADER (M37) =====
+function loadScript(src) {
+  return new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[src="' + src + '"]');
+    if (existing) { resolve(); return; }
+    var script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+}
+
+// ===== TRUST SCORE (M20) =====
+function calculateTrustScore(userId) {
+  if (!userId) return 0;
+  var score = 50; // Base score for new users
+  
+  // Get ratings for this user
+  var ratings = getRatingsForUser(userId);
+  if (ratings.length > 0) {
+    var avgRating = ratings.reduce(function(sum, r) { return sum + r.rating; }, 0) / ratings.length;
+    // Ratings contribute up to 30 points (avg 5 stars = 30 points)
+    score += Math.round((avgRating / 5) * 30);
+  } else {
+    score += 15; // Neutral for unrated users
+  }
+  
+  // Completed giveaways: +5 per giveaway, max 15
+  var giveawaysCompleted = getGiveawaysCompleted(userId);
+  score += Math.min(giveawaysCompleted * 5, 15);
+  
+  // Response rate: based on requests responded to
+  var responseRate = getResponseRate(userId);
+  // Response rate contributes up to 5 points
+  score += Math.round(responseRate * 5);
+  
+  return Math.min(100, Math.max(0, score));
+}
+
+function getTrustLevel(score) {
+  if (score >= 80) return { level: 'Trusted', color: '#2d8a4e', icon: '🛡️' };
+  if (score >= 60) return { level: 'Reliable', color: '#4caf50', icon: '✓' };
+  if (score >= 40) return { level: 'Newcomer', color: '#ff9800', icon: '🌱' };
+  return { level: 'Unverified', color: '#9e9e9e', icon: '?' };
+}
+
+function trustBadgeHtml(userId) {
+  var score = calculateTrustScore(userId);
+  var level = getTrustLevel(score);
+  return '<span class="trust-badge" style="background:' + level.color + '20;color:' + level.color + ';padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:600;text-align:center;white-space:nowrap">' +
+    level.icon + ' ' + level.level + ' (' + score + ')</span>';
+}
+
+function getRatingsForUser(userId) {
+  try {
+    var r = localStorage.getItem('geogive_ratings_' + userId);
+    return r ? JSON.parse(r) : [];
+  } catch(e) { return []; }
+}
+
+function getGiveawaysCompleted(userId) {
+  var items = window.state.items.filter(function(i) { return i.ownerId === userId && i.status === 'given'; });
+  return items.length;
+}
+
+function getResponseRate(userId) {
+  var totalReqs = window.state.requests.filter(function(r) { return r.ownerId === userId && r.status !== 'pending'; });
+  var allReqs = window.state.requests.filter(function(r) { return r.ownerId === userId; });
+  if (allReqs.length === 0) return 0.5; // Neutral
+  return totalReqs.length / allReqs.length;
+}
+
+// ===== FOLLOW SYSTEM (M22) =====
+function getFollowing() {
+  try {
+    var f = localStorage.getItem('geogive_following');
+    return f ? JSON.parse(f) : [];
+  } catch(e) { return []; }
+}
+
+function saveFollowing(list) {
+  try { localStorage.setItem('geogive_following', JSON.stringify(list)); } catch(e) {}
+}
+
+function isFollowing(userId) {
+  return getFollowing().indexOf(userId) !== -1;
+}
+
+function toggleFollow(userId) {
+  var list = getFollowing();
+  var idx = list.indexOf(userId);
+  if (idx > -1) {
+    list.splice(idx, 1);
+    showToast('Unfollowed');
+  } else {
+    list.unshift(userId);
+    showToast('Following! ❤️');
+    hapticMedium();
+  }
+  saveFollowing(list);
+  return list.indexOf(userId) !== -1;
+}
+
+function getFollowers(userId) {
+  // In a real app this would query the server
+  // For now, return count from localStorage
+  try {
+    var followers = JSON.parse(localStorage.getItem('geogive_followers_' + userId) || '[]');
+    return followers.length;
+  } catch(e) { return 0; }
+}
+
+// ===== FEED (M23) =====
+function getFeedItems() {
+  var following = getFollowing();
+  if (following.length === 0) return [];
+  var items = window.state.items.filter(function(item) {
+    return following.indexOf(item.ownerId) !== -1 && item.status === 'available';
+  });
+  // Sort by newest first
+  items.sort(function(a, b) { return b.createdAt - a.createdAt; });
+  return items;
+}
+
 function daysUntilExpiry(item) {
   var createdAt = item.createdAt || (item.created_at ? new Date(item.created_at).getTime() : Date.now());
   var expiresAt = item.expiresAt || (item.expires_at ? new Date(item.expires_at).getTime() : (createdAt + 30 * 24 * 60 * 60 * 1000));
   return Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
+}
+
+// ===== DARK MODE (M48) =====
+function isDarkMode() {
+  return localStorage.getItem('geogive_dark_mode') === 'true';
+}
+
+function setDarkMode(enabled) {
+  localStorage.setItem('geogive_dark_mode', enabled ? 'true' : 'false');
+  document.body.classList.toggle('dark-mode', enabled);
+  if (enabled) {
+    trackEvent('dark_mode_on', {});
+  }
+}
+
+function toggleDarkMode() {
+  var newState = !isDarkMode();
+  setDarkMode(newState);
+  showToast(newState ? '🌙 Dark mode on' : '☀️ Light mode on');
+}
+
+function initDarkMode() {
+  if (isDarkMode()) {
+    document.body.classList.add('dark-mode');
+  }
+}
+
+// ===== PROMOTED LISTINGS (M39) =====
+function isPromoted(item) {
+  if (!item.promotedAt) return false;
+  var promoExpires = item.promotedAt + (24 * 60 * 60 * 1000); // 24h boost
+  return Date.now() < promoExpires;
+}
+
+function getPromoTimeLeft(item) {
+  if (!item.promotedAt) return 0;
+  var promoExpires = item.promotedAt + (24 * 60 * 60 * 1000);
+  return Math.max(0, promoExpires - Date.now());
+}
+
+function promoteItem(itemId) {
+  var item = findItem(itemId);
+  if (!item) return;
+  // Check if user has free bumps remaining (1 free per item)
+  var freeBumpsUsed = localStorage.getItem('geogive_free_bump_' + itemId);
+  if (freeBumpsUsed) {
+    // Check GeoGive Pro status for unlimited bumps
+    if (!isProUser()) {
+      showToast('You already used your free bump. Upgrade to GeoGive Pro for unlimited boosts!');
+      return;
+    }
+  }
+  item.promotedAt = Date.now();
+  if (!freeBumpsUsed) {
+    localStorage.setItem('geogive_free_bump_' + itemId, 'true');
+  }
+  localStorage.setItem('geogive_items_cache', JSON.stringify(window.state.items));
+  hapticMedium();
+  showToast('⭐ Item promoted! It will appear at the top for 24 hours.');
+  applyFilters();
+  renderMyListings();
+}
+
+// ===== GEOGIVE PRO (M42) =====
+function isProUser() {
+  return localStorage.getItem('geogive_pro') === 'true';
+}
+
+function setProUser(status) {
+  localStorage.setItem('geogive_pro', status ? 'true' : 'false');
+  if (status) {
+    showToast('⭐ GeoGive Pro activated! Unlimited boosts, analytics, and badge.');
+    hapticHeavy();
+  }
+}
+
+// ===== REFERRAL PROGRAM (M41) =====
+function getReferralCode() {
+  var code = localStorage.getItem('geogive_referral_code');
+  if (!code) {
+    code = 'GG-' + (window.state.user ? window.state.user.id.substring(0, 6).toUpperCase() : Math.random().toString(36).substring(2, 8).toUpperCase());
+    localStorage.setItem('geogive_referral_code', code);
+  }
+  return code;
+}
+
+function applyReferralCode(code) {
+  if (!code || code === getReferralCode()) return false;
+  localStorage.setItem('geogive_referred_by', code);
+  // Reward: give the new user a free pro trial
+  setProUser(true);
+  showToast('🎉 Referral applied! You got a free GeoGive Pro trial.');
+  return true;
+}
+
+function getReferralCount() {
+  try {
+    var count = localStorage.getItem('geogive_referral_count');
+    return count ? parseInt(count) : 0;
+  } catch(e) { return 0; }
+}
+
+function trackReferral() {
+  var count = getReferralCount() + 1;
+  localStorage.setItem('geogive_referral_count', count.toString());
+  // In a real app, this would sync to the server
+}
+
+// ===== STRIPE PAYMENT INTEGRATION (M40) =====
+async function initiatePayment(priceId, itemData) {
+  // Payment flow structure — requires Stripe publishable key in production
+  // For now, simulate a successful payment flow for testing
+  showLoading(true);
+  try {
+    // In production: redirect to Stripe Checkout or use Stripe Elements
+    // var stripe = Stripe('pk_live_...');
+    // await stripe.redirectToCheckout({ lineItems: [{ price: priceId, quantity: 1 }], mode: 'payment' });
+    
+    // Simulated payment for local/demo use
+    await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+    
+    showLoading(false);
+    hapticHeavy();
+    showToast('🎉 Payment successful! Item promoted.');
+    
+    // Log the payment event
+    trackEvent('payment_completed', { priceId: priceId, item: itemData });
+    return true;
+  } catch(e) {
+    showLoading(false);
+    handleError(e, 'payment');
+    return false;
+  }
+}
+
+// ===== COLLECTIONS (M45) =====
+function getCollections() {
+  try {
+    return JSON.parse(localStorage.getItem('geogive_collections') || '[]');
+  } catch(e) { return []; }
+}
+
+function saveCollections(collections) {
+  localStorage.setItem('geogive_collections', JSON.stringify(collections));
+}
+
+function createCollection(name, description) {
+  var collections = getCollections();
+  var col = {
+    id: 'col-' + Date.now(),
+    name: name,
+    description: description || '',
+    items: [],
+    userId: window.state.user ? window.state.user.id : 'anon',
+    createdAt: Date.now()
+  };
+  collections.push(col);
+  saveCollections(collections);
+  trackEvent('collection_created', { name: name });
+  showToast('📁 Collection "' + name + '" created!');
+  return col;
+}
+
+function addToCollection(collectionId, itemId) {
+  var collections = getCollections();
+  var col = collections.find(function(c) { return c.id === collectionId; });
+  if (!col) return false;
+  if (col.items.indexOf(itemId) === -1) {
+    col.items.push(itemId);
+    saveCollections(collections);
+    showToast('Added to "' + col.name + '"');
+    hapticLight();
+  }
+  return true;
+}
+
+function removeFromCollection(collectionId, itemId) {
+  var collections = getCollections();
+  var col = collections.find(function(c) { return c.id === collectionId; });
+  if (!col) return;
+  col.items = col.items.filter(function(id) { return id !== itemId; });
+  saveCollections(collections);
+}
+
+function deleteCollection(collectionId) {
+  var collections = getCollections().filter(function(c) { return c.id !== collectionId; });
+  saveCollections(collections);
+  showToast('Collection deleted');
+}
+
+function getCollectionItems(collectionId) {
+  var collections = getCollections();
+  var col = collections.find(function(c) { return c.id === collectionId; });
+  if (!col) return [];
+  return window.state.items.filter(function(item) {
+    return col.items.indexOf(item.id) !== -1;
+  });
+}
+
+function shareReferralCode() {
+  var code = getReferralCode();
+  var shareData = {
+    title: 'Join GeoGive with my code!',
+    text: 'Use my referral code ' + code + ' to get a free GeoGive Pro trial! Join GeoGive to give away and get free items nearby.',
+    url: window.location.origin + window.location.pathname + '#ref-' + code
+  };
+  if (navigator.share) {
+    navigator.share(shareData).catch(function() {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(shareData.url).then(function() {
+      showToast('Referral link copied! 📋');
+    });
+  } else {
+    prompt('Copy this link:', shareData.url);
+  }
 }

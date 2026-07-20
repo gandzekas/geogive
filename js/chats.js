@@ -43,8 +43,8 @@ function subscribeToChat(chatId) {
             // If chat page is active, re-render
             if (window.state.currentChatId === chatId) {
               renderChatMessages(chat);
-  // Mark messages as read
-  markMessagesRead(chatId);
+              // Mark messages as read
+              markMessagesRead(chatId);
               var list = document.getElementById('chatMsgList');
               if (list) list.scrollTop = list.scrollHeight;
             }
@@ -308,40 +308,31 @@ function markMessagesRead(chatId) {
   }
 }
 
-function openChat(chatId, itemTitle) {
+// Start (or open) a chat with another user from their profile (M22/M23)
+function startChatWithUser(otherUserId) {
+  if (!window.state.user) { openAuthModal(); showToast('Please sign in to message.'); return; }
+  if (otherUserId === window.state.user.id) { showToast('That\'s you!'); return; }
+  var otherName = 'User';
+  var theirItems = window.state.items.filter(function(i) { return i.ownerId === otherUserId; });
+  if (theirItems.length) otherName = theirItems[0].ownerName;
+  var chatId = buildChatId(window.state.user.id, otherUserId, 'profile');
   var chat = window.state.chats[chatId];
-  if (!chat || !window.state.user) return;
-  var sb = getSupabase();
-  if (!sb) return;
-  // Mark all messages not from current user as read
-  var updated = false;
-  chat.messages.forEach(function(m) {
-    if (m.from !== window.state.user.id && !m.read) {
-      m.read = true;
-      updated = true;
-    }
-  });
-  if (!updated) return;
-  saveChatsToStorage();
-  // Update Supabase read receipt
-  var messagesToSync = chat.messages.map(function(m) {
-    return { from: m.from, text: m.text, created_at: new Date(m.createdAt).toISOString(), read: !!m.read };
-  });
-  withRetry(function() {
-    return sb.from('chats').update({ messages: messagesToSync }).eq('id', chatId);
-  }, { maxAttempts: 1, baseDelay: 300 }).catch(function() {});
-  // Update UI indicators for sent messages
-  var list = document.getElementById('chatMsgList');
-  if (list) {
-    var indicators = list.querySelectorAll('.msg-status-indicator');
-    indicators.forEach(function(ind) {
-      if (ind.textContent.indexOf('sent') !== -1 && ind.textContent.indexOf('read') === -1) {
-        ind.textContent = ' • ✓✓ read';
-        ind.style.color = '#2196f3';
-      }
-    });
+  if (!chat) {
+    chat = {
+      id: chatId,
+      itemTitle: 'Chat with ' + otherName,
+      targetUserId: otherUserId,
+      messages: [],
+      participants: [window.state.user.id, otherUserId]
+    };
+    window.state.chats[chatId] = chat;
+    saveChatsToStorage();
   }
+  closeModal('itemModalOverlay');
+  openChat(chatId, chat.itemTitle);
 }
+
+window.startChatWithUser = startChatWithUser;
 
 function closeChatPage() {
   window.state.currentChatId = null;

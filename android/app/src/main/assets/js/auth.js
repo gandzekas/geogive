@@ -141,7 +141,7 @@ function updateAuthUI() {
     if (loginBtn) loginBtn.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = '';
     if (userInfo) userInfo.style.display = '';
-    var name = (window.state.userProfile && window.state.userProfile.display_name) || window.state.user.email.split('@')[0];
+    var name = (window.state.userProfile && window.state.userProfile.display_name) || (window.state.user.email ? window.state.user.email.split('@')[0] : 'User');
     var verified = window.state.user.email_confirmed_at || (window.state.userProfile && window.state.userProfile.verified);
     if (headerName) headerName.textContent = name + (verified ? ' ✓' : '');
     if (verified) headerName.style.color = 'var(--green)';
@@ -308,6 +308,7 @@ function openSettingsModal() {
   document.getElementById('settingsSbKey').value = SUPABASE_KEY;
   document.getElementById('settingsModalOverlay').style.display = 'flex';
   initNotifToggles();
+  if (typeof renderAnalyticsDashboard === 'function') renderAnalyticsDashboard();
 }
 
 function saveSettings() {
@@ -326,4 +327,10 @@ function saveSettings() {
   checkSession();
   loadItemsFromSupabase();
   showToast('Settings saved! Connecting...');
+}
+
+function changeLang() {
+  var sel = document.getElementById('langSelector');
+  if (!sel) return;
+  setLang(sel.value);
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geogive-v4';
+const CACHE_NAME = 'geogive-v5';
 const OFFLINE_URL = '/index.html';
 var PRECACHE_URLS = [
   '/index.html',
@@ -21,6 +21,7 @@ var PRECACHE_URLS = [
   '/js/notifications.js',
   '/js/offline.js',
   '/js/router.js',
+  '/js/feed.js',
   '/js/app.js',
   '/manifest.json',
   '/icon-192.png',
@@ -62,6 +63,64 @@ self.addEventListener('activate', function(event) {
   self.clients.claim();
 });
 
+// ===== WEB PUSH API (M16) =====
+self.addEventListener('push', function(event) {
+  var data = { title: 'GeoGive', body: 'You have a new notification', icon: '/geogive/icon-192.png', badge: '/geogive/icon-192.png', tag: 'geogive-notification' };
+  try {
+    if (event.data) {
+      var payload = event.data.json();
+      data.title = payload.title || data.title;
+      data.body = payload.body || data.body;
+      data.url = payload.url || '/geogive/';
+      data.tag = payload.tag || data.tag;
+    }
+  } catch(e) {
+    data.body = event.data ? event.data.text() : data.body;
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon,
+      badge: data.badge,
+      tag: data.tag,
+      data: { url: data.url },
+      actions: [{ action: 'open', title: 'Open' }, { action: 'dismiss', title: 'Dismiss' }]
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  var url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/geogive/';
+  if (event.action === 'dismiss') return;
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        if (clientList[i].url.indexOf('/geogive/') !== -1 && 'focus' in clientList[i]) {
+          return clientList[i].focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});
+
+// ===== BACKGROUND SYNC (M34) =====
+self.addEventListener('sync', function(event) {
+  if (event.tag === 'sync-chat-messages') {
+    event.waitUntil(syncChatMessages());
+  }
+});
+
+function syncChatMessages() {
+  // Client will handle replay on next sync trigger via postMessage
+  return clients.matchAll().then(function(clientList) {
+    clientList.forEach(function(client) {
+      client.postMessage({ type: 'SYNC_CHAT_MESSAGES' });
+    });
+  });
+}
+
 self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
 
@@ -90,17 +149,17 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // Cache-first for CSS/JS/images
+  // Stale-while-revalidate for CSS/JS/images (M35)
   event.respondWith(
     caches.match(event.request).then(function(cached) {
-      if (cached) return cached;
-      return fetch(event.request).then(function(response) {
+      var fetchPromise = fetch(event.request).then(function(response) {
         if (response && response.status === 200) {
           var clone = response.clone();
           caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, clone); });
         }
         return response;
-      });
+      }).catch(function() { return cached; });
+      return cached || fetchPromise;
     })
   );
 });

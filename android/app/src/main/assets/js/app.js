@@ -107,35 +107,18 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!localStorage.getItem('geogive_onboarded')) {
     setTrackedTimeout(showOnboarding, 1000);
   }
-  // Pull-to-refresh on browse page
-  var touchStartY = 0;
-  var touchMoved = false;
-  var touchStartHandler, touchMoveHandler, touchEndHandler;
+  // Show community guidelines on first use (M27)
+  if (!localStorage.getItem('geogive_guidelines_accepted')) {
+    setTrackedTimeout(showCommunityGuidelines, 2500);
+  }
+  // Pull-to-refresh on browse page (M3)
+  setupPullToRefresh();
 
-  touchStartHandler = function(e) {
-    if (document.getElementById('page-browse').classList.contains('active')) {
-      touchStartY = e.touches[0].clientY;
-      touchMoved = false;
-    }
-  };
-  touchMoveHandler = function(e) {
-    if (document.getElementById('page-browse').classList.contains('active')) {
-      var diff = e.touches[0].clientY - touchStartY;
-      if (diff > 80 && window.scrollY === 0) {
-        touchMoved = true;
-      }
-    }
-  };
-  touchEndHandler = function() {
-    if (touchMoved && getSupabase()) {
-      loadItemsFromSupabase();
-      showToast('🔄 Refreshing...');
-    }
-  };
+  // Dark mode init (M48)
+  initDarkMode();
 
-  document.addEventListener('touchstart', touchStartHandler, { passive: true });
-  document.addEventListener('touchmove', touchMoveHandler, { passive: true });
-  document.addEventListener('touchend', touchEndHandler, { passive: true });
+  // Admin broadcast banner (M49)
+  if (typeof checkAdminBroadcast === 'function') checkAdminBroadcast();
 
   // Hide loading splash
   var splash = document.getElementById('appSplash');
@@ -151,6 +134,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var arg2 = el.getAttribute('data-arg2');
     var arg2Expr = el.getAttribute('data-arg2-expr');
     var closeModalArg = el.getAttribute('data-closemodal');
+    // Handle chained closeModal FIRST (matches original JS execution order)
+    if (closeModalArg) closeModal(closeModalArg);
     var fn = window[fnName];
     if (typeof fn === 'function') {
       // Evaluate dynamic expression if present
@@ -171,8 +156,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fn.call(el);
       }
     }
-    // Handle chained closeModal
-    if (closeModalArg) closeModal(closeModalArg);
   });
 
   document.addEventListener('input', function(e) {
@@ -254,6 +237,7 @@ window.handleEmailAuth = handleEmailAuth;
 window.handleLogout = handleLogout;
 window.openSettingsModal = openSettingsModal;
 window.saveSettings = saveSettings;
+window.changeLang = changeLang;
 window.setView = setView;
 window.updateRadiusLabel = updateRadiusLabel;
 window.applyFilters = applyFilters;
@@ -272,7 +256,46 @@ window.showUserProfile = showUserProfile;
 window.openReportModal = openReportModal;
 window.submitReport = submitReport;
 window.submitRating = submitRating;
+window.subscribeToPush = subscribeToPush;
+window.unsubscribeFromPush = unsubscribeFromPush;
+window.isPushSubscribed = isPushSubscribed;
+window.requestNotificationPermission = requestNotificationPermission;
+window.registerBackgroundSync = registerBackgroundSync;
+window.calculateTrustScore = calculateTrustScore;
+window.getTrustLevel = getTrustLevel;
+window.trustBadgeHtml = trustBadgeHtml;
+window.isPromoted = isPromoted;
+window.promoteItem = promoteItem;
+window.isProUser = isProUser;
+window.setProUser = setProUser;
+window.getReferralCode = getReferralCode;
+window.applyReferralCode = applyReferralCode;
+window.getReferralCount = getReferralCount;
+window.trackReferral = trackReferral;
+window.shareReferralCode = shareReferralCode;
+window.shareProfileCard = shareProfileCard;
+window.initiatePayment = initiatePayment;
+window.getCollections = getCollections;
+window.createCollection = createCollection;
+window.addToCollection = addToCollection;
+window.removeFromCollection = removeFromCollection;
+window.deleteCollection = deleteCollection;
+window.getCollectionItems = getCollectionItems;
+window.t = t;
+window.setLang = setLang;
+window.getCurrentLang = getCurrentLang;
+window.applyTranslations = applyTranslations;
+window.getAvailableLangs = getAvailableLangs;
+window.toggleDarkMode = toggleDarkMode;
+window.isDarkMode = isDarkMode;
+window.initDarkMode = initDarkMode;
+window.adminBroadcast = adminBroadcast;
+window.checkAdminBroadcast = checkAdminBroadcast;
 window.toggleBlockUser = toggleBlockUser;
+window.isFollowing = isFollowing;
+window.getFollowing = getFollowing;
+window.getFeedItems = getFeedItems;
+window.getFollowers = getFollowers;
 window.showSafetyTips = showSafetyTips;
 window.closeSafetyModal = closeSafetyModal;
 window.showToast = showToast;
@@ -282,13 +305,28 @@ window.switchAuthTab = switchAuthTab;
 window.debounceSearch = debounceSearch;
 window.submitProfileEdit = submitProfileEdit;
 window.renderProfile = renderProfile;
+window.renderFeed = renderFeed;
 window.bumpItem = bumpItem;
 window.toggleFavorite = toggleFavorite;
 window.shareItem = shareItem;
 window.nextOnboardingStep = nextOnboardingStep;
 window.skipOnboarding = skipOnboarding;
+window.restartOnboarding = restartOnboarding;
+window.togglePushNotifs = togglePushNotifs;
+window.showCommunityGuidelines = showCommunityGuidelines;
+window.closeGuidelinesModal = closeGuidelinesModal;
 window.toggleNotifPref = toggleNotifPref;
+window.filterChatMessages = filterChatMessages;
+window.clearChatSearch = clearChatSearch;
+window.handleChatTyping = handleChatTyping;
 window.resolveReport = resolveReport;
+window.haptic = haptic;
+window.hapticLight = hapticLight;
+window.hapticMedium = hapticMedium;
+window.hapticHeavy = hapticHeavy;
+window.showRetryUI = showRetryUI;
+window.renderEmptyState = renderEmptyState;
+window.setupPullToRefresh = setupPullToRefresh;
 
 window.state = state;
 
@@ -330,7 +368,15 @@ window.GeoGive = {
   switchPage: switchPage,
   openItemDetail: openItemDetail,
   trackEvent: trackEvent,
-  rateLimit: rateLimit
+  rateLimit: rateLimit,
+  renderAnalyticsDashboard: renderAnalyticsDashboard,
+  clearAnalyticsData: clearAnalyticsData,
+  haptic: haptic,
+  hapticLight: hapticLight,
+  hapticMedium: hapticMedium,
+  hapticHeavy: hapticHeavy,
+  showRetryUI: showRetryUI,
+  renderEmptyState: renderEmptyState
 };
 
 // ===== PWA INSTALL PROMPT =====

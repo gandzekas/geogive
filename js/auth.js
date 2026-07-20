@@ -141,7 +141,7 @@ function updateAuthUI() {
     if (loginBtn) loginBtn.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = '';
     if (userInfo) userInfo.style.display = '';
-    var name = (window.state.userProfile && window.state.userProfile.display_name) || window.state.user.email.split('@')[0];
+    var name = (window.state.userProfile && window.state.userProfile.display_name) || (window.state.user.email ? window.state.user.email.split('@')[0] : 'User');
     var verified = window.state.user.email_confirmed_at || (window.state.userProfile && window.state.userProfile.verified);
     if (headerName) headerName.textContent = name + (verified ? ' ✓' : '');
     if (verified) headerName.style.color = 'var(--green)';
@@ -318,6 +318,10 @@ function saveSettings() {
   try { var p = new URL(url); } catch(e) { showToast('Invalid URL format.'); return; }
   try { localStorage.setItem('geogive_sb_url', url); } catch(e) { showToast('Failed to save settings.'); return; }
   try { localStorage.setItem('geogive_sb_key', key); } catch(e) { showToast('Failed to save key.'); return; }
+  var vapid = document.getElementById('settingsVapidKey');
+  if (vapid && vapid.value.trim()) {
+    localStorage.setItem('geogive_vapid_key', vapid.value.trim());
+  }
   SUPABASE_URL = url;
   SUPABASE_KEY = key;
   closeModal('settingsModalOverlay');

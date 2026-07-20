@@ -3,6 +3,10 @@
 function showUserProfile(userId) {
   var userItems = window.state.items.filter(function(i) { return i.ownerId === userId; });
   var userName = userItems.length > 0 ? userItems[0].ownerName : 'User';
+  var isOwn = window.state.user && window.state.user.id === userId;
+  var following = isFollowing(userId);
+  var blocked = isUserBlocked(userId);
+  var followers = getFollowers(userId);
 
   var content = document.getElementById('itemModalContent');
   if (!content) return;
@@ -16,7 +20,23 @@ function showUserProfile(userId) {
   body += '<div style="text-align:center;margin-bottom:16px">';
   body += '<div style="width:64px;height:64px;border-radius:50%;background:var(--green);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:2rem">' + escHtml(userName.charAt(0).toUpperCase()) + '</div>';
   body += '</div>';
-  body += '<p style="text-align:center;color:#666">' + userItems.length + ' items listed</p>';
+  body += '<p style="text-align:center;color:#666">' + userItems.length + ' items listed · ' + followers + ' followers</p>';
+  body += '<div style="display:flex;gap:8px;margin:12px 0">';
+  if (!isOwn && window.state.user) {
+    body += '<button class="btn btn-sm ' + (following ? 'btn-secondary' : 'btn-primary') + '" style="flex:1" data-fn="toggleFollow" data-arg-expr="escJs(userId)">' + (following ? '✓ Following' : '+ Follow') + '</button>';
+    body += '<button class="btn btn-sm btn-secondary" style="flex:1" data-fn="startChatWithUser" data-arg-expr="escJs(userId)">💬 Message</button>';
+    body += '<button class="btn btn-sm ' + (blocked ? 'btn-primary' : 'btn-secondary') + '" data-fn="toggleBlockUser" data-arg-expr="escJs(userId)">' + (blocked ? 'Unblock' : '🚫 Block') + '</button>';
+  }
+  body += '</div>';
+  if (userItems.length > 0) {
+    body += '<h4 style="margin-bottom:8px">Items</h4>';
+    userItems.forEach(function(item) {
+      body += '<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #eee;border-radius:8px;margin-bottom:6px;cursor:pointer" data-fn="openItemDetail" data-arg-expr="escJs(item.id)">';
+      if (item.photos && item.photos.length) body += '<img src="' + sanitizeUrl(item.photos[0]) + '" style="width:40px;height:40px;border-radius:6px;object-fit:cover">';
+      body += '<div style="flex:1"><strong>' + escHtml(item.title) + '</strong></div>';
+      body += '</div>';
+    });
+  }
   body += '</div>';
   content.innerHTML = body;
   document.getElementById('itemModalOverlay').style.display = 'flex';
@@ -204,17 +224,17 @@ function submitProfileEdit() {
   saveProfile({ display_name: name, bio: bio });
   closeModal('itemModalOverlay');
 }
-
 function renderProfile() {
   var container = document.getElementById('profileContent');
   if (!container) return;
+
   if (!window.state.user) {
-    container.innerHTML = '<div class="empty-state"><p>Please sign in to view your profile.</p></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">👤</div><h3>Not Logged In</h3><p>Please log in to view your profile.</p></div>';
     return;
   }
 
   var isAdmin = window.state.userProfile && window.state.userProfile.role === 'admin';
-  var name = (window.state.userProfile && window.state.userProfile.display_name) || window.state.user.email.split('@')[0];
+  var name = (window.state.userProfile && window.state.userProfile.display_name) || (window.state.user.email ? window.state.user.email.split('@')[0] : 'User');
   var bio = (window.state.userProfile && window.state.userProfile.bio) || '';
   var verified = window.state.user.email_confirmed_at || (window.state.userProfile && window.state.userProfile.verified);
   var trustScore = calculateTrustScore(window.state.user.id);
@@ -232,10 +252,14 @@ function renderProfile() {
   html += '<p style="color:#999;font-size:0.85rem;margin-top:8px">' + escHtml(window.state.user.email) + '</p>';
 
   // Stats
-  html += '<div style="display:flex;justify-content:center;gap:20px;margin:16px 0">';
+  var followingCount = getFollowing().length;
+  var followerCount = getFollowers(window.state.user.id);
+  html += '<div style="display:flex;justify-content:center;gap:16px;margin:16px 0;flex-wrap:wrap">';
   html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + myItems.length + '</div><div style="font-size:0.7rem;color:#999">Listed</div></div>';
   html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + givenAway + '</div><div style="font-size:0.7rem;color:#999">Given</div></div>';
   html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + trustScore + '/100</div><div style="font-size:0.7rem;color:#999">Trust</div></div>';
+  html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + followerCount + '</div><div style="font-size:0.7rem;color:#999">Followers</div></div>';
+  html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + followingCount + '</div><div style="font-size:0.7rem;color:#999">Following</div></div>';
   html += '</div>';
 
   // Edit profile
@@ -252,6 +276,12 @@ function renderProfile() {
     html += '<span style="font-size:1.5rem">⭐</span><strong> GeoGive Pro</strong>';
     html += '<p style="font-size:0.8rem;color:#666;margin-top:4px">Unlimited bumps, analytics, pro badge</p>';
     html += '</div>';
+  } else {
+    html += '<div style="margin-top:16px;padding:12px;background:#fff;border:1px solid #ddd;border-radius:12px;text-align:center">';
+    html += '<span style="font-size:1.5rem">⭐</span><strong> GeoGive Pro</strong>';
+    html += '<p style="font-size:0.8rem;color:#666;margin-top:4px">Unlimited bumps, analytics, pro badge</p>';
+    html += '<button class="btn btn-primary btn-sm" data-fn="upgradeToPro" style="margin-top:8px">⭐ Upgrade (Demo)</button>';
+    html += '</div>';
   }
 
   // Referral program (M41)
@@ -262,7 +292,14 @@ function renderProfile() {
   html += '<input type="text" value="' + getReferralCode() + '" readonly style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem;font-family:monospace;background:white">';
   html += '<button class="btn btn-sm btn-primary" data-fn="shareReferralCode">Share</button>';
   html += '</div>';
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-top:8px">';
+  html += '<input id="applyReferralInput" type="text" placeholder="Have a code? Enter it..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem">';
+  html += '<button class="btn btn-sm btn-secondary" data-fn="applyReferralFromInput">Apply</button>';
   html += '</div>';
+  html += '</div>';
+
+  // Collections (M45)
+  html += renderCollectionsSection();
 
   // Share profile card (M43)
   html += '<div style="margin-top:12px;text-align:center">';
@@ -304,14 +341,100 @@ function renderProfile() {
   if (isAdmin) loadAdminReports();
 }
 
+// ===== COLLECTIONS UI (M45) =====
+function renderCollectionsSection() {
+  var collections = getCollections();
+  var html = '<div style="margin-top:16px;padding:16px;background:#f3e5f5;border-radius:12px">';
+  html += '<h4 style="margin-bottom:8px">📁 Collections</h4>';
+  html += '<p style="font-size:0.85rem;color:#666;margin-bottom:8px">Group items into themed bundles.</p>';
+  if (collections.length === 0) {
+    html += '<p style="font-size:0.85rem;color:#999;margin-bottom:8px">No collections yet.</p>';
+  } else {
+    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">';
+    collections.forEach(function(c) {
+      html += '<button class="btn btn-sm btn-secondary" style="justify-content:space-between;display:flex;width:100%" data-fn="openCollection" data-arg-expr="escJs(c.id)">' + escHtml(c.name) + ' <span style="color:#999">' + c.items.length + '</span></button>';
+    });
+    html += '</div>';
+  }
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<input id="newCollectionName" type="text" placeholder="New collection name..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem">';
+  html += '<button class="btn btn-sm btn-primary" data-fn="createCollectionFromInput">+ Create</button>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+}
+
+function createCollectionFromInput() {
+  var inp = document.getElementById('newCollectionName');
+  if (!inp) return;
+  var name = inp.value.trim();
+  if (!name) { showToast('Enter a collection name.'); return; }
+  createCollection(name, '');
+  renderProfile();
+}
+
+window.createCollectionFromInput = createCollectionFromInput;
+
+function openCollection(collectionId) {
+  var col = getCollections().find(function(c) { return c.id === collectionId; });
+  if (!col) return;
+  var items = getCollectionItems(collectionId);
+  var content = document.getElementById('itemModalContent');
+  if (!content) return;
+  var body = '';
+  body += '<div style="padding:16px">';
+  body += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  body += '<h3 style="margin:0">' + escHtml(col.name) + '</h3>';
+  body += '<button data-fn="closeModal" data-arg="itemModalOverlay" style="background:none;border:none;font-size:1.5rem;cursor:pointer">✕</button>';
+  body += '</div>';
+  if (col.description) body += '<p style="color:#666;margin-bottom:12px">' + escHtml(col.description) + '</p>';
+  if (items.length === 0) {
+    body += '<p style="color:#999">No items in this collection yet. Add items from their detail view.</p>';
+  } else {
+    items.forEach(function(item) {
+      body += '<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #eee;border-radius:8px;margin-bottom:6px;cursor:pointer" data-fn="openItemDetail" data-arg-expr="escJs(item.id)">';
+      if (item.photos && item.photos.length) body += '<img src="' + sanitizeUrl(item.photos[0]) + '" style="width:40px;height:40px;border-radius:6px;object-fit:cover">';
+      body += '<div style="flex:1"><strong>' + escHtml(item.title) + '</strong></div>';
+      body += '<button class="btn btn-sm btn-danger" data-fn="removeFromCollection" data-arg-expr="escJs(col.id)" data-arg2-expr="escJs(item.id)">Remove</button>';
+      body += '</div>';
+    });
+  }
+  body += '<button class="btn btn-secondary btn-full" data-fn="deleteCollection" data-arg-expr="escJs(col.id)" style="margin-top:12px">🗑️ Delete Collection</button>';
+  body += '</div>';
+  content.innerHTML = body;
+  document.getElementById('itemModalOverlay').style.display = 'flex';
+}
+
+window.openCollection = openCollection;
+
+// ===== PRO UPGRADE (M42) =====
+function upgradeToPro() {
+  setProUser(true);
+  renderProfile();
+}
+
+window.upgradeToPro = upgradeToPro;
+
+// ===== APPLY REFERRAL (M41) =====
+function applyReferralFromInput() {
+  var inp = document.getElementById('applyReferralInput');
+  if (!inp) return;
+  var code = inp.value.trim().toUpperCase();
+  if (!code) { showToast('Enter a referral code.'); return; }
+  var ok = applyReferralCode(code);
+  if (ok) renderProfile();
+}
+
+window.applyReferralFromInput = applyReferralFromInput;
+
 // ===== SHAREABLE PROFILE CARD (M43) =====
 async function shareProfileCard() {
   var user = window.state.user;
   if (!user) return;
   var trust = calculateTrustScore(user.id);
-  var trustLevel = getTrustLevel(user.id);
-  var bio = user.bio || 'GeoGive community member';
-  var listings = window.state.items.filter(function(i) { return i.userId === user.id; });
+  var trustLevel = getTrustLevel(trust);
+  var bio = (window.state.userProfile && window.state.userProfile.bio) || 'GeoGive community member';
+  var listings = window.state.items.filter(function(i) { return i.ownerId === user.id; });
   var followers = getFollowing(user.id).length;
 
   // Generate card via Canvas
@@ -330,7 +453,21 @@ async function shareProfileCard() {
   // Card background
   ctx.fillStyle = 'rgba(255,255,255,0.95)';
   ctx.beginPath();
-  ctx.roundRect(30, 30, 540, 340, 16);
+  if (ctx.roundRect) {
+    ctx.roundRect(30, 30, 540, 340, 16);
+  } else {
+    // Fallback for browsers without roundRect
+    var r = 16, x = 30, y = 30, w = 540, h = 340;
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+  }
   ctx.fill();
 
   // Avatar circle
@@ -341,18 +478,18 @@ async function shareProfileCard() {
   ctx.fillStyle = 'white';
   ctx.font = 'bold 32px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText((user.name || 'U')[0].toUpperCase(), 100, 112);
+  ctx.fillText(((window.state.userProfile && window.state.userProfile.display_name) || 'U')[0].toUpperCase(), 100, 112);
 
   // Name
   ctx.fillStyle = '#333';
   ctx.font = 'bold 24px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(user.name || 'Anonymous', 160, 95);
+  ctx.fillText((window.state.userProfile && window.state.userProfile.display_name) || 'Anonymous', 160, 95);
 
   // Trust badge
   ctx.font = '14px sans-serif';
   ctx.fillStyle = '#666';
-  ctx.fillText(trustLevel + '  ⭐ ' + trust + ' trust', 160, 120);
+  ctx.fillText(trustLevel.level + '  ⭐ ' + trust + ' trust', 160, 120);
 
   // Bio
   ctx.fillStyle = '#555';
@@ -397,7 +534,7 @@ async function shareProfileCard() {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'geogive-profile-' + (user.name || 'user') + '.png';
+    a.download = 'geogive-profile-' + 'user' + '.png';
     a.click();
     URL.revokeObjectURL(url);
     showToast('Profile card saved! 📸');

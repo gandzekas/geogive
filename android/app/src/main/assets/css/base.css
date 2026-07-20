@@ -59,3 +59,47 @@ header h1 span { font-size: 1.6rem; }
 main { padding: 16px; max-width: 800px; margin: 0 auto; }
 .page { display: none; }
 .page.active { display: block; }
+
+/* ===== DARK MODE (M48) ===== */
+body.dark-mode {
+  --green: #4caf50;
+  --green-light: #1b3a1c;
+  --orange: #ff9800;
+  --orange-light: #3a2a00;
+  --gray-100: #121212;
+  --gray-200: #2a2a2a;
+  --gray-400: #757575;
+  --gray-700: #bdbdbd;
+  --gray-900: #f5f5f5;
+  --shadow: 0 2px 8px rgba(0,0,0,0.4);
+  background: #121212;
+  color: #f5f5f5;
+}
+body.dark-mode header {
+  background: linear-gradient(135deg, #1b5e20, #0d3011);
+}
+body.dark-mode .form-card,
+body.dark-mode .modal-sm,
+body.dark-mode .item-card,
+body.dark-mode .chat-bubble {
+  background: #1e1e1e;
+  border-color: #333;
+}
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #f5f5f5;
+}
+body.dark-mode .btn-secondary {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+body.dark-mode .modal-overlay {
+  background: rgba(0,0,0,0.75);
+}
+body.dark-mode .badge.status-available { background: #1b3a1c; }
+body.dark-mode .analytics-dashboard { background: #1e1e1e; }
+body.dark-mode .analytics-row { border-color: #333; }

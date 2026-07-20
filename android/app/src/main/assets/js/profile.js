@@ -199,41 +199,102 @@ function showSafetyTips() {
 
 function submitProfileEdit() {
   var name = document.getElementById('profileName') ? document.getElementById('profileName').value.trim() : '';
+  var bio = document.getElementById('profileBio') ? document.getElementById('profileBio').value.trim() : '';
   if (!name) { showToast('Please enter a display name'); return; }
-  saveProfile({ display_name: name });
+  saveProfile({ display_name: name, bio: bio });
   closeModal('itemModalOverlay');
 }
-
 function renderProfile() {
   var container = document.getElementById('profileContent');
   if (!container) return;
+
   if (!window.state.user) {
-    container.innerHTML = '<div class="empty-state"><p>Please sign in to view your profile.</p></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">👤</div><h3>Not Logged In</h3><p>Please log in to view your profile.</p></div>';
     return;
   }
 
-  // Check if user is admin (simple check — could be expanded)
   var isAdmin = window.state.userProfile && window.state.userProfile.role === 'admin';
-
-  var name = (window.state.userProfile && window.state.userProfile.display_name) || window.state.user.email.split('@')[0];
+  var name = (window.state.userProfile && window.state.userProfile.display_name) || (window.state.user.email ? window.state.user.email.split('@')[0] : 'User');
   var bio = (window.state.userProfile && window.state.userProfile.bio) || '';
   var verified = window.state.user.email_confirmed_at || (window.state.userProfile && window.state.userProfile.verified);
+  var trustScore = calculateTrustScore(window.state.user.id);
+  var trustLevel = getTrustLevel(trustScore);
+  var myItems = window.state.items.filter(function(i) { return i.ownerId === window.state.user.id; });
+  var givenAway = myItems.filter(function(i) { return i.status === 'given'; }).length;
+
   var html = '';
   html += '<div style="text-align:center;padding:20px">';
   html += '<div style="width:80px;height:80px;border-radius:50%;background:var(--green);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:12px">' + escHtml(name.charAt(0).toUpperCase()) + '</div>';
   html += '<h3>' + escHtml(name) + '</h3>';
   if (verified) html += '<div class="verified-badge" style="margin:8px auto">✓ Verified</div>';
+  html += '<div style="margin:8px 0">' + trustBadgeHtml(window.state.user.id) + '</div>';
   if (bio) html += '<p style="color:#666;margin-top:8px">' + escHtml(bio) + '</p>';
   html += '<p style="color:#999;font-size:0.85rem;margin-top:8px">' + escHtml(window.state.user.email) + '</p>';
+
+  // Stats
+  html += '<div style="display:flex;justify-content:center;gap:20px;margin:16px 0">';
+  html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + myItems.length + '</div><div style="font-size:0.7rem;color:#999">Listed</div></div>';
+  html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + givenAway + '</div><div style="font-size:0.7rem;color:#999">Given</div></div>';
+  html += '<div><div style="font-size:1.3rem;font-weight:700;color:var(--green)">' + trustScore + '/100</div><div style="font-size:0.7rem;color:#999">Trust</div></div>';
+  html += '</div>';
+
+  // Edit profile
   html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
   html += '<input id="profileName" type="text" value="' + escHtml(name) + '" placeholder="Display name" style="flex:1;min-width:180px;padding:10px;border:1px solid #ddd;border-radius:10px">';
   html += '<button class="btn btn-primary" data-fn="submitProfileEdit" type="button">Save</button>';
-  html += '</div></div>';
+  html += '</div>';
+  html += '<textarea id="profileBio" placeholder="Add a short bio..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-top:8px;min-height:60px">' + escHtml(bio) + '</textarea>';
+  html += '</div>';
 
-  // Admin section
+  // GeoGive Pro status (M42)
+  if (isProUser()) {
+    html += '<div style="margin-top:16px;padding:12px;background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-radius:12px;text-align:center">';
+    html += '<span style="font-size:1.5rem">⭐</span><strong> GeoGive Pro</strong>';
+    html += '<p style="font-size:0.8rem;color:#666;margin-top:4px">Unlimited bumps, analytics, pro badge</p>';
+    html += '</div>';
+  }
+
+  // Referral program (M41)
+  html += '<div style="margin-top:16px;padding:16px;background:#e8f5e9;border-radius:12px">';
+  html += '<h4 style="margin-bottom:8px">🎁 Invite Friends</h4>';
+  html += '<p style="font-size:0.85rem;color:#666;margin-bottom:8px">Share your referral code — both get a free Pro trial!</p>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<input type="text" value="' + getReferralCode() + '" readonly style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem;font-family:monospace;background:white">';
+  html += '<button class="btn btn-sm btn-primary" data-fn="shareReferralCode">Share</button>';
+  html += '</div>';
+  html += '</div>';
+
+  // Share profile card (M43)
+  html += '<div style="margin-top:12px;text-align:center">';
+  html += '<button class="btn btn-sm btn-secondary" data-fn="shareProfileCard">📸 Share Profile Card</button>';
+  html += '</div>';
+
+  // Admin section (M49 expanded)
   if (isAdmin) {
     html += '<div style="margin-top:24px;padding:16px;background:#fff3e0;border-radius:12px">';
-    html += '<h4 style="margin-bottom:12px">🛡️ Admin — Report Queue</h4>';
+    html += '<h4 style="margin-bottom:12px">🛡️ Admin Dashboard</h4>';
+
+    // Platform stats (local)
+    var totalItems = window.state.items ? window.state.items.length : 0;
+    var activeItems = window.state.items ? window.state.items.filter(function(i) { return i.status === 'available'; }).length : 0;
+    var totalUsers = localStorage.getItem('geogive_admin_user_count') || '—';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+    html += '<div style="background:white;padding:10px;border-radius:8px;text-align:center"><div style="font-size:1.4rem;font-weight:700">' + totalItems + '</div><div style="font-size:0.7rem;color:#999">Total Items</div></div>';
+    html += '<div style="background:white;padding:10px;border-radius:8px;text-align:center"><div style="font-size:1.4rem;font-weight:700">' + activeItems + '</div><div style="font-size:0.7rem;color:#999">Active</div></div>';
+    html += '<div style="background:white;padding:10px;border-radius:8px;text-align:center"><div style="font-size:1.4rem;font-weight:700">' + totalUsers + '</div><div style="font-size:0.7rem;color:#999">Users</div></div>';
+    html += '</div>';
+
+    // Broadcast announcement
+    html += '<div style="margin-bottom:12px">';
+    html += '<label style="font-size:0.8rem;color:#666">📢 Broadcast Message</label>';
+    html += '<div style="display:flex;gap:8px;margin-top:4px">';
+    html += '<input type="text" id="adminBroadcast" placeholder="Send to all users..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:0.85rem">';
+    html += '<button class="btn btn-sm btn-primary" data-fn="adminBroadcast">Send</button>';
+    html += '</div>';
+    html += '</div>';
+
+    // Report queue
+    html += '<h5 style="margin-bottom:8px;font-size:0.9rem">📋 Pending Reports</h5>';
     html += '<div id="adminReportQueue"><p style="color:#999">Loading...</p></div>';
     html += '</div>';
   }
@@ -241,6 +302,156 @@ function renderProfile() {
   container.innerHTML = html;
 
   if (isAdmin) loadAdminReports();
+}
+
+// ===== SHAREABLE PROFILE CARD (M43) =====
+async function shareProfileCard() {
+  var user = window.state.user;
+  if (!user) return;
+  var trust = calculateTrustScore(user.id);
+  var trustLevel = getTrustLevel(trust);
+  var bio = (window.state.userProfile && window.state.userProfile.bio) || 'GeoGive community member';
+  var listings = window.state.items.filter(function(i) { return i.ownerId === user.id; });
+  var followers = getFollowing(user.id).length;
+
+  // Generate card via Canvas
+  var canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 400;
+  var ctx = canvas.getContext('2d');
+
+  // Background gradient
+  var grad = ctx.createLinearGradient(0, 0, 600, 400);
+  grad.addColorStop(0, '#4a90d9');
+  grad.addColorStop(1, '#2c5f8a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 600, 400);
+
+  // Card background
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(30, 30, 540, 340, 16);
+  } else {
+    // Fallback for browsers without roundRect
+    var r = 16, x = 30, y = 30, w = 540, h = 340;
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+  }
+  ctx.fill();
+
+  // Avatar circle
+  ctx.fillStyle = '#4a90d9';
+  ctx.beginPath();
+  ctx.arc(100, 100, 40, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 32px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(((window.state.userProfile && window.state.userProfile.display_name) || 'U')[0].toUpperCase(), 100, 112);
+
+  // Name
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText((window.state.userProfile && window.state.userProfile.display_name) || 'Anonymous', 160, 95);
+
+  // Trust badge
+  ctx.font = '14px sans-serif';
+  ctx.fillStyle = '#666';
+  ctx.fillText(trustLevel.level + '  ⭐ ' + trust + ' trust', 160, 120);
+
+  // Bio
+  ctx.fillStyle = '#555';
+  ctx.font = '15px sans-serif';
+  var words = bio.split(' ');
+  var line = '';
+  var y = 170;
+  for (var i = 0; i < words.length; i++) {
+    var test = line + words[i] + ' ';
+    if (ctx.measureText(test).width > 480) {
+      ctx.fillText(line, 60, y);
+      line = words[i] + ' ';
+      y += 22;
+    } else {
+      line = test;
+    }
+  }
+  ctx.fillText(line, 60, y);
+
+  // Stats
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillText(listings.length, 120, 250);
+  ctx.fillText(followers, 260, 250);
+  ctx.fillText(trust, 400, 250);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#888';
+  ctx.fillText('Listings', 120, 270);
+  ctx.fillText('Followers', 260, 270);
+  ctx.fillText('Trust', 400, 270);
+
+  // Branding
+  ctx.fillStyle = '#4a90d9';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText('🌍 GeoGive', 60, 340);
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#999';
+  ctx.fillText(window.location.origin, 60, 360);
+
+  // Download
+  canvas.toBlob(function(blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'geogive-profile-' + 'user' + '.png';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Profile card saved! 📸');
+  });
+}
+
+// ===== ADMIN BROADCAST (M49) =====
+function adminBroadcast() {
+  var input = document.getElementById('adminBroadcast');
+  if (!input || !input.value.trim()) return;
+  var msg = input.value.trim();
+  // Store broadcast in localStorage — all users see it on next load
+  localStorage.setItem('geogive_admin_broadcast', JSON.stringify({
+    message: msg,
+    timestamp: Date.now(),
+    from: window.state.user ? window.state.user.name : 'Admin'
+  }));
+  // Show it immediately
+  showToast('📢 Broadcast sent to all users!');
+  input.value = '';
+  trackEvent('admin_broadcast', { message: msg });
+}
+
+function checkAdminBroadcast() {
+  try {
+    var broadcast = JSON.parse(localStorage.getItem('geogive_admin_broadcast') || 'null');
+    if (broadcast && broadcast.message) {
+      // Show if less than 24h old
+      if (Date.now() - broadcast.timestamp < 24 * 60 * 60 * 1000) {
+        var banner = document.getElementById('adminBroadcastBanner');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'adminBroadcastBanner';
+          banner.style.cssText = 'background:#fff3e0;padding:10px 16px;text-align:center;font-size:0.85rem;border-bottom:2px solid #f57c00;position:sticky;top:0;z-index:200';
+          document.body.insertBefore(banner, document.body.firstChild);
+        }
+        banner.innerHTML = '📢 <strong>' + escHtml(broadcast.from) + ':</strong> ' + escHtml(broadcast.message) + ' <button onclick="this.parentElement.style.display=\'none\'" style="background:none;border:none;cursor:pointer;margin-left:8px;font-size:1rem">✕</button>';
+      }
+    }
+  } catch(e) {}
 }
 
 async function loadAdminReports() {
