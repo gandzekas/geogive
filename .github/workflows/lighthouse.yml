@@ -25,7 +25,4 @@ jobs:
         with:
           configPath: './lighthouserc.json'
           temporaryPublicStorage: true
-          runs: '3'
-          urls: |
-            https://gandzekas.github.io/geogive/
           uploadArtifacts: true
