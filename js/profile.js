@@ -39,7 +39,7 @@ function showUserProfile(userId) {
   }
   body += '</div>';
   content.innerHTML = body;
-  document.getElementById('itemModalOverlay').style.display = 'flex';
+  openModal('itemModalOverlay');
 }
 
 function saveProfile(profileData) {
@@ -78,7 +78,7 @@ function openReportModal(userId, itemId) {
   document.getElementById('reportReason').value = 'spam';
   document.getElementById('reportDetails').value = '';
   document.getElementById('reportError').style.display = 'none';
-  document.getElementById('reportModalOverlay').style.display = 'flex';
+  openModal('reportModalOverlay');
 }
 
 async function submitReport() {
@@ -132,7 +132,7 @@ function showRatingPrompt(itemId, ratedUserId) {
   document.getElementById('ratingValue').value = '0';
   document.getElementById('ratingComment').value = '';
   document.getElementById('ratingError').style.display = 'none';
-  document.getElementById('ratingModalOverlay').style.display = 'flex';
+  openModal('ratingModalOverlay');
 
   // Star click handler
   document.getElementById('ratingStars').onclick = function(e) {
@@ -204,7 +204,7 @@ function toggleBlockUser(userId) {
 }
 
 function openSafetyModal() {
-  document.getElementById('safetyModalOverlay').style.display = 'flex';
+  openModal('safetyModalOverlay');
 }
 
 function closeSafetyModal() {
@@ -402,7 +402,7 @@ function openCollection(collectionId) {
   body += '<button class="btn btn-secondary btn-full" data-fn="deleteCollection" data-arg-expr="escJs(col.id)" style="margin-top:12px">🗑️ Delete Collection</button>';
   body += '</div>';
   content.innerHTML = body;
-  document.getElementById('itemModalOverlay').style.display = 'flex';
+  openModal('itemModalOverlay');
 }
 
 window.openCollection = openCollection;

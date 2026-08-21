@@ -160,7 +160,7 @@ function updateAuthUI() {
 }
 
 function openAuthModal() {
-  document.getElementById('authModalOverlay').style.display = 'flex';
+  openModal('authModalOverlay');
   switchAuthTab('login');
 }
 
@@ -306,7 +306,7 @@ function openSettingsModal() {
   var sb = getSupabase();
   document.getElementById('settingsSbUrl').value = SUPABASE_URL;
   document.getElementById('settingsSbKey').value = SUPABASE_KEY;
-  document.getElementById('settingsModalOverlay').style.display = 'flex';
+  openModal('settingsModalOverlay');
   initNotifToggles();
   if (typeof renderAnalyticsDashboard === 'function') renderAnalyticsDashboard();
 }

@@ -133,12 +133,23 @@ function openItemDetail(itemId) {
 
   body += '</div>';
   content.innerHTML = body;
-  document.getElementById('itemModalOverlay').style.display = 'flex';
+  openModal('itemModalOverlay');
 }
 
 function requestItem(itemId) { var item = findItem(itemId); if (item) createRequest(item); }
 
-function closeModal(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+function openModal(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.classList.add('active');
+  el.style.display = 'flex';
+}
+
+function closeModal(id) {
+  var el = document.getElementById(id);
+  if (el) { el.classList.add('hidden'); el.classList.remove('active'); el.style.display = 'none'; }
+}
 
 // ===== ONBOARDING =====
 var onboardingStep = 1;
@@ -146,7 +157,7 @@ var onboardingStep = 1;
 function showOnboarding() {
   onboardingStep = 1;
   updateOnboardingUI();
-  document.getElementById('onboardingModalOverlay').style.display = 'flex';
+  openModal('onboardingModalOverlay');
 }
 
 function updateOnboardingUI() {
@@ -181,7 +192,7 @@ function skipOnboarding() {
 // ===== COMMUNITY GUIDELINES (M27) =====
 function showCommunityGuidelines() {
   if (document.getElementById('guidelinesModalOverlay')) {
-    document.getElementById('guidelinesModalOverlay').style.display = 'flex';
+    openModal('guidelinesModalOverlay');
   }
 }
 

@@ -242,6 +242,7 @@ function initAccessibility() {
 window.switchPage = switchPage;
 window.openAuthModal = openAuthModal;
 window.closeModal = closeModal;
+window.openModal = openModal;
 window.handleEmailAuth = handleEmailAuth;
 window.handleLogout = handleLogout;
 window.openSettingsModal = openSettingsModal;

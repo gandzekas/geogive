@@ -35,10 +35,14 @@ test('feed page requires sign-in', async ({ page }) => {
   await expect(page.locator('#feedList')).toContainText('Sign in');
 });
 
-test('community guidelines modal appears', async ({ page }) => {
+test('community guidelines modal appears after onboarding skip', async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(1500);
+  // Fresh users see onboarding first; skipping leads to guidelines
+  const skipBtn = page.locator('#onboardingModalOverlay button').last();
+  if (await skipBtn.isVisible()) { await skipBtn.click(); }
+  await page.waitForTimeout(1000);
   await expect(page.locator('#guidelinesModalOverlay')).toBeVisible();
 });
 
