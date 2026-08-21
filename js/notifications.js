@@ -3,6 +3,11 @@
 function initNotifications() {
   if (!('Notification' in window)) { window.state.notifPermission = 'unsupported'; return; }
   window.state.notifPermission = Notification.permission;
+  // Restore cached notifications (server sync happens on login)
+  try {
+    var cached = JSON.parse(localStorage.getItem('geogive_notifications') || '[]');
+    if (Array.isArray(cached) && cached.length > 0) window.state.notifications = cached;
+  } catch(e) {}
 }
 
 function addNotif(title, body, onClick) {
@@ -10,6 +15,7 @@ function addNotif(title, body, onClick) {
   window.state.notifications.unshift(notif);
   if (window.state.notifications.length > 50) window.state.notifications = window.state.notifications.slice(0, 50);
   showToast('🔔 ' + title);
+  persistNotification(notif);
 
   // Show browser notification if permitted
   if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
@@ -22,6 +28,49 @@ function addNotif(title, body, onClick) {
       };
     } catch(e) {}
   }
+}
+
+// ===== NOTIFICATION DB SYNC (Phase 1) =====
+// Local notifications are the source of UX; DB rows make them cross-device.
+async function persistNotification(notif) {
+  var sb = getSupabase();
+  if (!sb || !window.state.user) return;
+  try {
+    await sb.from('notifications').insert({
+      user_id: window.state.user.id,
+      type: 'info',
+      title: notif.title,
+      body: notif.body || '',
+      read: false
+    });
+  } catch(e) { console.warn('persistNotification:', e); }
+}
+
+async function loadNotificationsFromServer() {
+  var sb = getSupabase();
+  if (!sb || !window.state.user) return;
+  try {
+    var result = await withRetry(function() {
+      return sb.from('notifications')
+        .select('*').eq('user_id', window.state.user.id)
+        .order('created_at', { ascending: false }).limit(50);
+    }, { maxAttempts: 2, baseDelay: 400 });
+    if (result.error) throw result.error;
+    var serverNotifs = (result.data || []).map(function(r) {
+      return {
+        id: r.id, dbId: r.id, title: r.title,
+        body: r.body || '',
+        read: !!r.read,
+        createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now()
+      };
+    });
+    // Merge: keep local-only notifs (no dbId) that are newer than oldest server row
+    var serverIds = {};
+    serverNotifs.forEach(function(n) { serverIds[n.dbId] = true; });
+    var localOnly = window.state.notifications.filter(function(n) { return !n.dbId && !serverIds[n.id]; });
+    window.state.notifications = serverNotifs.concat(localOnly).slice(0, 50);
+    try { localStorage.setItem('geogive_notifications', JSON.stringify(window.state.notifications)); } catch(e) {}
+  } catch(e) { console.warn('loadNotifications:', e); }
 }
 
 // ===== WEB PUSH SUBSCRIPTION (M16) =====

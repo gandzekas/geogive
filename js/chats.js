@@ -327,6 +327,18 @@ function startChatWithUser(otherUserId) {
     };
     window.state.chats[chatId] = chat;
     saveChatsToStorage();
+    // Persist the chat row so message UPDATEs (sendChatMsg) have a row to hit
+    var sb2 = getSupabase();
+    if (sb2) {
+      sb2.from('chats').upsert({
+        id: chatId,
+        item_title: chat.itemTitle,
+        participant_1: window.state.user.id,
+        participant_2: otherUserId,
+        messages: [{ from: 'system', text: 'Chat started', createdAt: new Date().toISOString() }],
+        created_at: new Date().toISOString()
+      }).then(function(r) { if (r.error) console.warn('chat row upsert failed:', r.error); });
+    }
   }
   closeModal('itemModalOverlay');
   openChat(chatId, chat.itemTitle);

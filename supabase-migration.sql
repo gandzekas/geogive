@@ -98,6 +98,9 @@ CREATE TABLE IF NOT EXISTS requests (
   requester_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   owner_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   message text,
+  item_title text DEFAULT 'Unknown Item',
+  requester_name text DEFAULT 'Someone',
+  owner_name text DEFAULT 'Owner',
   status text DEFAULT 'pending',
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
@@ -115,16 +118,20 @@ CREATE TRIGGER trigger_requests_updated_at
 -- ============================================
 -- 5. CHATS TABLE (messages between users)
 -- ============================================
+-- chats: id is a composite TEXT key ('userA_userB_itemId') built by the client;
+-- messages is a JSONB array (append-only thread per chat row)
 CREATE TABLE IF NOT EXISTS chats (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  item_id uuid REFERENCES items(id) ON DELETE CASCADE,
-  participant_1 uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  participant_2 uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  message text NOT NULL,
-  sender_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  read boolean DEFAULT false,
-  created_at timestamptz DEFAULT now()
+  id TEXT PRIMARY KEY,
+  request_id UUID REFERENCES requests(id) ON DELETE SET NULL,
+  item_id UUID REFERENCES items(id) ON DELETE SET NULL,
+  item_title TEXT DEFAULT 'Chat',
+  participant_1 UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  participant_2 UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  messages JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_chats_p1 ON chats(participant_1);
+CREATE INDEX IF NOT EXISTS idx_chats_p2 ON chats(participant_2);
 
 CREATE INDEX IF NOT EXISTS idx_chats_participants ON chats(participant_1, participant_2);
 CREATE INDEX IF NOT EXISTS idx_chats_item ON chats(item_id);
@@ -258,7 +265,9 @@ CREATE POLICY "Participants can view chats" ON chats FOR SELECT USING (
   auth.uid() = participant_1 OR auth.uid() = participant_2
 );
 DROP POLICY IF EXISTS "Participants can insert chats" ON chats;
-CREATE POLICY "Participants can insert chats" ON chats FOR INSERT WITH CHECK (auth.uid() = sender_id);
+CREATE POLICY "Participants can insert chats" ON chats FOR INSERT WITH CHECK (
+  auth.uid() = participant_1 OR auth.uid() = participant_2
+);
 DROP POLICY IF EXISTS "Participants can update chats" ON chats;
 CREATE POLICY "Participants can update chats" ON chats FOR UPDATE USING (
   auth.uid() = participant_1 OR auth.uid() = participant_2
@@ -535,3 +544,24 @@ FOR EACH ROW EXECUTE FUNCTION recompute_trust_score();
 -- ============================================================
 -- handle_new_user() already exists above; ensure it inserts display_name.
 -- (Existing function retained; verified below.)
+
+
+-- ============================================================
+-- CHATS SCHEMA FIX (2026-08-21): align with client data model.
+-- For DBs where the OLD chats table exists, drop and recreate.
+-- Safe: no production data at time of migration.
+-- ============================================================
+-- DO $$ ... (run manually if old table exists):
+-- DROP TABLE IF EXISTS chats; then re-run the CREATE TABLE above.
+
+
+-- ============================================================
+-- SCHEMA ALIGNMENT (2026-08-21): columns the client writes.
+-- Idempotent: safe to re-run on existing databases.
+-- ============================================================
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS item_title text DEFAULT 'Unknown Item';
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS requester_name text DEFAULT 'Someone';
+ALTER TABLE requests ADD COLUMN IF NOT EXISTS owner_name text DEFAULT 'Owner';
+
+-- Trust score column for server-side recompute trigger
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS trust_score integer DEFAULT 0;

@@ -131,6 +131,10 @@ async function loadUserData() {
   if (typeof syncFollowsFromServer === 'function') {
     try { await syncFollowsFromServer(); } catch(fe) { console.warn('follow sync failed:', fe); }
   }
+  // Pull cross-device notifications (Phase 1)
+  if (typeof loadNotificationsFromServer === 'function') {
+    try { await loadNotificationsFromServer(); } catch(ne) { console.warn('notif sync failed:', ne); }
+  }
   updateAuthUI();
 }
 
