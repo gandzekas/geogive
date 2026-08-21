@@ -590,17 +590,21 @@ function getPromoTimeLeft(item) {
   return Math.max(0, promoExpires - Date.now());
 }
 
-function promoteItem(itemId) {
+async function promoteItem(itemId) {
   var item = findItem(itemId);
   if (!item) return;
   // Check if user has free bumps remaining (1 free per item)
   var freeBumpsUsed = localStorage.getItem('geogive_free_bump_' + itemId);
-  if (freeBumpsUsed) {
-    // Check GeoGive Pro status for unlimited bumps
-    if (!isProUser()) {
-      showToast('You already used your free bump. Upgrade to GeoGive Pro for unlimited boosts!');
+  if (freeBumpsUsed && !isProUser()) {
+    // Paid boost via Stripe (Phase 3) — falls back to local demo if checkout unavailable
+    var ok = await startCheckout('promote_24h', itemId);
+    if (ok) return; // redirecting to Stripe
+    if (!ok && stripeConfigured()) {
+      showToast('Payment system unavailable right now. Try again later.');
       return;
     }
+    showToast('You already used your free bump. Upgrade to GeoGive Pro for unlimited boosts!');
+    return;
   }
   item.promotedAt = Date.now();
   if (!freeBumpsUsed) {
@@ -614,6 +618,67 @@ function promoteItem(itemId) {
 }
 
 // ===== GEOGIVE PRO (M42) =====
+// ===== STRIPE CHECKOUT (Phase 3) =====
+function stripeConfigured() {
+  var sb = getSupabase();
+  return !!(sb && sb.functions);
+}
+
+async function startCheckout(productId, itemId) {
+  var sb = getSupabase();
+  if (!sb || !sb.functions || !window.state.user) return false;
+  try {
+    var result = await sb.functions.invoke('create-checkout', {
+      body: JSON.stringify({
+        productId: productId,
+        userId: window.state.user.id,
+        userEmail: window.state.user.email || '',
+        itemId: itemId || null
+      })
+    });
+    if (result.error) throw result.error;
+    var data = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+    if (data && data.url) {
+      window.location.assign(data.url);
+      return true;
+    }
+    return false;
+  } catch(e) {
+    console.warn('startCheckout:', e);
+    return false;
+  }
+}
+
+// Handle ?checkout=success return: refresh entitlements
+async function handleCheckoutReturn() {
+  var params = new URLSearchParams(window.location.search);
+  if (!params.has('checkout')) return;
+  var product = params.get('product');
+  history.replaceState(null, '', window.location.pathname);
+  if (params.get('checkout') !== 'success') { showToast('Checkout cancelled.'); return; }
+  if (product === 'pro_monthly') {
+    await refreshProStatus();
+    showToast('⭐ Welcome to GeoGive Pro!');
+  } else if (product === 'promote_24h' && params.get('item')) {
+    var item = findItem(params.get('item'));
+    if (item) {
+      item.promotedAt = Date.now();
+      localStorage.setItem('geogive_items_cache', JSON.stringify(window.state.items));
+      applyFilters();
+    }
+    showToast('⭐ Listing boosted for 24 hours!');
+  }
+}
+
+async function refreshProStatus() {
+  var sb = getSupabase();
+  if (!sb || !window.state.user) return;
+  try {
+    var { data } = await sb.from('profiles').select('is_pro').eq('id', window.state.user.id).single();
+    setProStatus(!!(data && data.is_pro));
+  } catch(e) { console.warn('refreshProStatus:', e); }
+}
+
 function isProUser() {
   return localStorage.getItem('geogive_pro') === 'true';
 }
@@ -639,10 +704,32 @@ function getReferralCode() {
 function applyReferralCode(code) {
   if (!code || code === getReferralCode()) return false;
   localStorage.setItem('geogive_referred_by', code);
-  // Reward: give the new user a free pro trial
-  setProUser(true);
+  // Persist attribution to DB (Phase 3) — referrer gets real credit cross-device
+  (async function() {
+    var sb = getSupabase();
+    if (!sb || !window.state.user) return;
+    try {
+      // Resolve referrer's user id from their code prefix (GG-<id6>)
+      await sb.from('referrals').insert({
+        referrer_id: null, // resolved server-side by code when RLS allows; stored with code
+        referred_id: window.state.user.id,
+        code: code,
+        rewarded: false
+      });
+    } catch(e) { console.warn('referral DB:', e); }
+  })();
   showToast('🎉 Referral applied! You got a free GeoGive Pro trial.');
   return true;
+}
+
+// Capture ?ref=CODE from invite links (Phase 4 prep)
+function captureReferralFromUrl() {
+  var params = new URLSearchParams(window.location.search);
+  var ref = params.get('ref');
+  if (ref && !localStorage.getItem('geogive_referred_by')) {
+    localStorage.setItem('geogive_pending_ref', ref);
+    history.replaceState(null, '', window.location.pathname);
+  }
 }
 
 function getReferralCount() {
@@ -652,10 +739,19 @@ function getReferralCount() {
   } catch(e) { return 0; }
 }
 
-function trackReferral() {
+async function trackReferral() {
   var count = getReferralCount() + 1;
   localStorage.setItem('geogive_referral_count', count.toString());
-  // In a real app, this would sync to the server
+  var sb = getSupabase();
+  if (!sb || !window.state.user) return;
+  try {
+    var { count: dbCount } = await sb.from('referrals')
+      .select('id', { count: 'exact', head: true })
+      .eq('referrer_id', window.state.user.id);
+    if (typeof dbCount === 'number') {
+      localStorage.setItem('geogive_referral_count', String(dbCount));
+    }
+  } catch(e) { console.warn('trackReferral:', e); }
 }
 
 // ===== STRIPE PAYMENT INTEGRATION (M40) =====

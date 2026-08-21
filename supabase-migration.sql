@@ -565,3 +565,6 @@ ALTER TABLE requests ADD COLUMN IF NOT EXISTS owner_name text DEFAULT 'Owner';
 
 -- Trust score column for server-side recompute trigger
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS trust_score integer DEFAULT 0;
+
+-- Pro entitlement (Phase 3)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_pro boolean DEFAULT false;

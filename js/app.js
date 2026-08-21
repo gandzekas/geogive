@@ -103,6 +103,16 @@ document.addEventListener('DOMContentLoaded', function() {
     initNotifications();
   }
 
+  // Capture referral codes from invite links (Phase 4)
+  if (typeof captureReferralFromUrl === 'function') {
+    captureReferralFromUrl();
+  }
+
+  // Stripe checkout return handling (Phase 3)
+  if (typeof handleCheckoutReturn === 'function') {
+    handleCheckoutReturn();
+  }
+
   // Show onboarding for first-time users
   if (!localStorage.getItem('geogive_onboarded')) {
     setTrackedTimeout(showOnboarding, 1000);

@@ -409,9 +409,16 @@ function openCollection(collectionId) {
 window.openCollection = openCollection;
 
 // ===== PRO UPGRADE (M42) =====
-function upgradeToPro() {
-  setProUser(true);
-  renderProfile();
+async function upgradeToPro() {
+  var ok = await startCheckout('pro_monthly');
+  if (!ok && stripeConfigured()) {
+    showToast('Payment system unavailable. Try again later.');
+  } else if (!ok) {
+    // Demo fallback (no Stripe configured): local-only flag
+    setProStatus(true);
+    showToast('⭐ Pro enabled (demo mode — connect Stripe for real billing)');
+    renderProfile();
+  }
 }
 
 window.upgradeToPro = upgradeToPro;
