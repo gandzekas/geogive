@@ -20,6 +20,17 @@ jobs:
           done
           [ "$code" = "200" ] || exit 1
 
+      - name: Start static server
+        run: |
+          nohup python3 -m http.server 8080 --directory . > server.log 2>&1 &
+          for i in $(seq 1 20); do
+            curl -s -o /dev/null http://localhost:8080/ && break
+            sleep 1
+          done
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+          echo "local server: HTTP $code"
+          [ "$code" = "200" ] || { cat server.log; exit 1; }
+
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v11
         with:

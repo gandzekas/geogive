@@ -4,8 +4,6 @@
       "url": [
         "http://localhost:8080/"
       ],
-      "startServerCommand": "python3 -m http.server 8080 --directory .",
-      "startServerReadyTimeout": 30000,
       "numberOfRuns": 3,
       "settings": {
         "maxWaitForLoad": 60000
