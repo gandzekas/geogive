@@ -33,6 +33,10 @@ async function createRequest(item) {
     showToast('Request sent! Check the Requests tab.');
     trackEvent('request_sent', { item_id: item.id });
     addNotif('Request Sent', 'You requested "' + item.title + '". The giver will be notified.');
+    // Push-notify the item owner (Phase 2)
+    if (typeof pushNotify === 'function') {
+      pushNotify(item.ownerId, 'New request', 'Someone requested "' + item.title + '"', '/geogive/');
+    }
     switchPage('requests');
   } catch(e) { createRequestLocal(item); }
 }

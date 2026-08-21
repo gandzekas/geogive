@@ -2,6 +2,8 @@
 // Reads from localStorage (injected at build time or entered via Settings)
 
 var SUPABASE_URL = localStorage.getItem('geogive_sb_url') || '';
+// Web Push VAPID public key (private key held by push-sending Edge Function)
+var VAPID_PUBLIC_KEY = localStorage.getItem('geogive_vapid_key') || 'BGMsuhHAc9a9MTcEcy3p9BX-BcD05xx6fW_bL3H3vP_SCNMAklEDRu4ye5jgIP8JdaEQ4hMzj-1yVITwscSl6UU';
 var SUPABASE_KEY = localStorage.getItem('geogive_sb_key') || '';
 
 // App constants
@@ -91,3 +93,5 @@ function initSupabase() {
 function getSupabase() {
   return window.supabaseClient;
 }
+
+try { window.VAPID_PUBLIC_KEY = VAPID_PUBLIC_KEY; } catch(e) {}

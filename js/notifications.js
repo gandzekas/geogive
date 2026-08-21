@@ -73,6 +73,19 @@ async function loadNotificationsFromServer() {
   } catch(e) { console.warn('loadNotifications:', e); }
 }
 
+
+// ===== SERVER PUSH TRIGGER (Phase 2) =====
+// Ask the send-push Edge Function to notify another user's devices.
+async function pushNotify(userId, title, body, url) {
+  var sb = getSupabase();
+  if (!sb || !sb.functions || !userId) return;
+  try {
+    await sb.functions.invoke('send-push', {
+      body: JSON.stringify({ userId: userId, title: title, body: body || '', url: url || '/geogive/' })
+    });
+  } catch(e) { console.warn('pushNotify:', e); }
+}
+
 // ===== WEB PUSH SUBSCRIPTION (M16) =====
 function urlBase64ToUint8Array(base64String) {
   var padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -89,7 +102,7 @@ async function subscribeToPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
   // VAPID public key must be set before push can work.
   // Set localStorage.geogive_vapid_key to your base64url-encoded VAPID public key.
-  var VAPID_PUBLIC_KEY = localStorage.getItem('geogive_vapid_key') || '';
+  var VAPID_PUBLIC_KEY = localStorage.getItem('geogive_vapid_key') || (typeof window.VAPID_PUBLIC_KEY !== 'undefined' ? window.VAPID_PUBLIC_KEY : '');
   if (!VAPID_PUBLIC_KEY) {
     console.warn('GeoGive: No VAPID public key configured. Set localStorage.geogive_vapid_key.');
     return false;

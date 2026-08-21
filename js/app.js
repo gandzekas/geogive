@@ -438,3 +438,5 @@ window.addEventListener('appinstalled', function() {
   trackEvent('pwa_installed');
   localStorage.setItem('geogive_installed', 'true');
 });
+
+try { window.pushNotify = pushNotify; } catch(e) {}

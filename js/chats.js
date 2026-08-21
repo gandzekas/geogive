@@ -397,6 +397,13 @@ async function sendChatMsg() {
         return sb.from('chats').update({ messages: messagesToSync }).eq('id', window.state.currentChatId);
       }, { maxAttempts: 2, baseDelay: 500 });
       msg.status = 'sent';
+      // Push-notify the other participant's devices (Phase 2)
+      if (chat.participants && typeof pushNotify === 'function') {
+        var other = chat.participants.find(function(pid) { return pid !== window.state.user.id; });
+        if (other && other !== 'system') {
+          pushNotify(other, 'New message', text.substring(0, 80), '/geogive/index.html#chat-' + window.state.currentChatId);
+        }
+      }
       // Update UI
       var indicators = list ? list.querySelectorAll('.msg-status-indicator') : [];
       if (indicators.length > 0) {
