@@ -127,6 +127,10 @@ async function loadUserData() {
   } catch(e) {
     console.warn('loadUserData error:', e);
   }
+  // Pull cross-device follow list from server (M22)
+  if (typeof syncFollowsFromServer === 'function') {
+    try { await syncFollowsFromServer(); } catch(fe) { console.warn('follow sync failed:', fe); }
+  }
   updateAuthUI();
 }
 

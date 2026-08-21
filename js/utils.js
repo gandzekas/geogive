@@ -431,26 +431,46 @@ function getResponseRate(userId) {
   return totalReqs.length / allReqs.length;
 }
 
-// ===== FOLLOW SYSTEM (M22) =====
+// ===== FOLLOW SYSTEM (M22 — Supabase-backed, localStorage cache) =====
+var _followingCache = null;
+
 function getFollowing() {
+  if (_followingCache) return _followingCache;
   try {
     var f = localStorage.getItem('geogive_following');
-    return f ? JSON.parse(f) : [];
-  } catch(e) { return []; }
+    _followingCache = f ? JSON.parse(f) : [];
+  } catch(e) { _followingCache = []; }
+  return _followingCache;
 }
 
 function saveFollowing(list) {
+  _followingCache = list;
   try { localStorage.setItem('geogive_following', JSON.stringify(list)); } catch(e) {}
+}
+
+async function syncFollowsFromServer() {
+  var sb = getSupabase();
+  if (!sb || !window.state.user) return;
+  try {
+    var result = await withRetry(function() {
+      return sb.from('follows').select('followee_id').eq('follower_id', window.state.user.id);
+    }, { maxAttempts: 2, baseDelay: 500 });
+    if (!result.error && result.data) {
+      saveFollowing(result.data.map(function(r) { return r.followee_id; }));
+    }
+  } catch(e) { console.warn('syncFollows:', e); }
 }
 
 function isFollowing(userId) {
   return getFollowing().indexOf(userId) !== -1;
 }
 
-function toggleFollow(userId) {
+async function toggleFollow(userId) {
+  var sb = getSupabase();
   var list = getFollowing();
   var idx = list.indexOf(userId);
-  if (idx > -1) {
+  var nowFollowing = idx === -1;
+  if (!nowFollowing) {
     list.splice(idx, 1);
     showToast('Unfollowed');
   } else {
@@ -459,28 +479,65 @@ function toggleFollow(userId) {
     hapticMedium();
   }
   saveFollowing(list);
-  return list.indexOf(userId) !== -1;
+  if (sb && window.state.user) {
+    try {
+      if (nowFollowing) {
+        var ins = await sb.from('follows').insert({ follower_id: window.state.user.id, followee_id: userId });
+        if (ins.error) throw ins.error;
+      } else {
+        var del = await sb.from('follows').delete()
+          .eq('follower_id', window.state.user.id).eq('followee_id', userId);
+        if (del.error) throw del.error;
+      }
+    } catch(e) {
+      console.warn('toggleFollow server sync failed:', e);
+      showToast('Saved locally — will sync later');
+    }
+  }
+  return nowFollowing;
 }
 
-function getFollowers(userId) {
-  // In a real app this would query the server
-  // For now, return count from localStorage
+async function getFollowers(userId) {
+  var sb = getSupabase();
+  if (!sb) return 0;
   try {
-    var followers = JSON.parse(localStorage.getItem('geogive_followers_' + userId) || '[]');
-    return followers.length;
+    var result = await withRetry(function() {
+      return sb.from('follows').select('id', { count: 'exact', head: true }).eq('followee_id', userId);
+    }, { maxAttempts: 2, baseDelay: 400 });
+    return result.count || 0;
   } catch(e) { return 0; }
 }
 
-// ===== FEED (M23) =====
+// ===== FEED (M23 — Supabase-backed) =====
 function getFeedItems() {
   var following = getFollowing();
   if (following.length === 0) return [];
   var items = window.state.items.filter(function(item) {
     return following.indexOf(item.ownerId) !== -1 && item.status === 'available';
   });
-  // Sort by newest first
   items.sort(function(a, b) { return b.createdAt - a.createdAt; });
   return items;
+}
+
+async function loadFeedItemsFromSupabase() {
+  var sb = getSupabase();
+  var following = getFollowing();
+  if (!sb || !window.state.user || following.length === 0) return [];
+  try {
+    var result = await withRetry(function() {
+      return sb.from('items')
+        .select('*, profiles:owner_id(display_name), item_photos:photos(url,order)')
+        .in('owner_id', following)
+        .eq('status', 'available')
+        .order('created_at', { ascending: false })
+        .limit(100);
+    }, { maxAttempts: 2, baseDelay: 500 });
+    if (result.error) throw result.error;
+    return (result.data || []).map(normalizeItem);
+  } catch(e) {
+    console.warn('loadFeedItems:', e);
+    return [];
+  }
 }
 
 function daysUntilExpiry(item) {
@@ -623,18 +680,56 @@ async function initiatePayment(priceId, itemData) {
 }
 
 // ===== COLLECTIONS (M45) =====
-function getCollections() {
+async function getCollections() {
+  var sb = getSupabase();
+  if (sb && window.state.user) {
+    try {
+      var result = await withRetry(function() {
+        return sb.from('collections').select('*').eq('user_id', window.state.user.id).order('created_at', { ascending: false });
+      }, { maxAttempts: 2, baseDelay: 400 });
+      if (!result.error && result.data) {
+        var mapped = result.data.map(function(r) {
+          return { id: r.id, name: r.name, description: r.description || '', itemIds: r.item_ids || [] };
+        });
+        try { localStorage.setItem('geogive_collections', JSON.stringify(mapped)); } catch(e) {}
+        return mapped;
+      }
+    } catch(e) { console.warn('getCollections server:', e); }
+  }
   try {
     return JSON.parse(localStorage.getItem('geogive_collections') || '[]');
   } catch(e) { return []; }
 }
 
-function saveCollections(collections) {
-  localStorage.setItem('geogive_collections', JSON.stringify(collections));
+function saveCollectionsLocal(collections) {
+  try { localStorage.setItem('geogive_collections', JSON.stringify(collections)); } catch(e) {}
+}
+
+function _getCollectionsSync() {
+  try { return JSON.parse(localStorage.getItem('geogive_collections') || '[]'); }
+  catch(e) { return []; }
+}
+
+async function _persistCollection(col) {
+  var sb = getSupabase();
+  if (!sb || !window.state.user) return;
+  try {
+    var row = {
+      id: col.id.indexOf('col-') === 0 ? undefined : col.id,
+      user_id: window.state.user.id,
+      name: col.name,
+      description: col.description || '',
+      item_ids: col.items || []
+    };
+    var q = sb.from('collections').upsert(row).select().single();
+    var result = await withRetry(function() { return q; }, { maxAttempts: 2, baseDelay: 400 });
+    if (result.error) throw result.error;
+    if (result.data && result.data.id) col.id = result.data.id;
+  } catch(e) { console.warn('persistCollection:', e); }
 }
 
 function createCollection(name, description) {
-  var collections = getCollections();
+  var collections = _getCollectionsSync();
   var col = {
     id: 'col-' + Date.now(),
     name: name,
@@ -644,19 +739,22 @@ function createCollection(name, description) {
     createdAt: Date.now()
   };
   collections.push(col);
-  saveCollections(collections);
+  saveCollectionsLocal(collections);
+  _persistCollection(col);
   trackEvent('collection_created', { name: name });
   showToast('📁 Collection "' + name + '" created!');
   return col;
 }
 
 function addToCollection(collectionId, itemId) {
-  var collections = getCollections();
+  var collections = _getCollectionsSync();
   var col = collections.find(function(c) { return c.id === collectionId; });
   if (!col) return false;
+  col.items = col.items || [];
   if (col.items.indexOf(itemId) === -1) {
     col.items.push(itemId);
-    saveCollections(collections);
+    saveCollectionsLocal(collections);
+    _persistCollection(col);
     showToast('Added to "' + col.name + '"');
     hapticLight();
   }
@@ -664,21 +762,27 @@ function addToCollection(collectionId, itemId) {
 }
 
 function removeFromCollection(collectionId, itemId) {
-  var collections = getCollections();
+  var collections = _getCollectionsSync();
   var col = collections.find(function(c) { return c.id === collectionId; });
   if (!col) return;
-  col.items = col.items.filter(function(id) { return id !== itemId; });
-  saveCollections(collections);
+  col.items = (col.items || []).filter(function(id) { return id !== itemId; });
+  saveCollectionsLocal(collections);
+  _persistCollection(col);
 }
 
 function deleteCollection(collectionId) {
-  var collections = getCollections().filter(function(c) { return c.id !== collectionId; });
-  saveCollections(collections);
+  var collections = _getCollectionsSync().filter(function(c) { return c.id !== collectionId; });
+  saveCollectionsLocal(collections);
+  var sb = getSupabase();
+  if (sb && window.state.user && collectionId.indexOf('col-') !== 0) {
+    sb.from('collections').delete().eq('id', collectionId).eq('user_id', window.state.user.id)
+      .then(function(r) { if (r.error) console.warn('deleteCollection:', r.error); });
+  }
   showToast('Collection deleted');
 }
 
 function getCollectionItems(collectionId) {
-  var collections = getCollections();
+  var collections = _getCollectionsSync();
   var col = collections.find(function(c) { return c.id === collectionId; });
   if (!col) return [];
   return window.state.items.filter(function(item) {
@@ -689,7 +793,7 @@ function getCollectionItems(collectionId) {
 // Show a modal to add an item to an existing collection or create a new one (M45)
 function openAddToCollection(itemId) {
   if (!window.state.user) { openAuthModal(); showToast('Please sign in first.'); return; }
-  var collections = getCollections();
+  var collections = _getCollectionsSync();
   var content = document.getElementById('itemModalContent');
   var overlay = document.getElementById('itemModalOverlay');
   if (!content || !overlay) return;

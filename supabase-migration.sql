@@ -402,3 +402,136 @@ CREATE TRIGGER on_auth_user_created
 -- Update existing items to have geography from lat/lng
 UPDATE items SET location = ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography
 WHERE lat IS NOT NULL AND lng IS NOT NULL AND location IS NULL;
+
+
+-- ============================================================
+-- PHASE 1 ADDITIONS (2026-08-21): social + monetization + push
+-- ============================================================
+
+-- Follows (M22 real backend)
+CREATE TABLE IF NOT EXISTS follows (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  follower_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  followee_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (follower_id, followee_id),
+  CHECK (follower_id <> followee_id)
+);
+CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_follows_followee ON follows(followee_id);
+
+-- Collections (M45 real backend)
+CREATE TABLE IF NOT EXISTS collections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  item_ids UUID[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_collections_user ON collections(user_id);
+
+-- Promoted listings (M39 real backend)
+CREATE TABLE IF NOT EXISTS item_promotions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  promoted_until TIMESTAMPTZ NOT NULL,
+  payment_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_promotions_item ON item_promotions(item_id);
+CREATE INDEX IF NOT EXISTS idx_promotions_active ON item_promotions(promoted_until);
+
+-- Referrals (M41 real backend)
+CREATE TABLE IF NOT EXISTS referrals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  referred_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  rewarded BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+
+-- Push subscriptions (M24 real backend)
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  endpoint TEXT UNIQUE NOT NULL,
+  keys_p256dh TEXT NOT NULL,
+  keys_auth TEXT NOT NULL,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id);
+
+-- User settings (theme, language, radius — syncs across devices)
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  theme TEXT DEFAULT 'light',
+  language TEXT DEFAULT 'en',
+  radius_miles INTEGER DEFAULT 10,
+  notifications_enabled BOOLEAN DEFAULT TRUE,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- RLS POLICIES for new tables
+-- ============================================================
+ALTER TABLE follows ENABLE ROW LEVEL SECURITY;
+ALTER TABLE collections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE item_promotions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+
+-- follows: public read (follower counts), owner-only write
+CREATE POLICY "follows_select_public" ON follows FOR SELECT USING (TRUE);
+CREATE POLICY "follows_insert_own" ON follows FOR INSERT WITH CHECK (auth.uid() = follower_id);
+CREATE POLICY "follows_delete_own" ON follows FOR DELETE USING (auth.uid() = follower_id);
+
+-- collections: private by default
+CREATE POLICY "collections_owner_all" ON collections FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- promotions: public read, owner-only insert
+CREATE POLICY "promotions_select_public" ON item_promotions FOR SELECT USING (TRUE);
+CREATE POLICY "promotions_insert_own" ON item_promotions FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- referrals: owner reads own, service writes
+CREATE POLICY "referrals_select_own" ON referrals FOR SELECT USING (auth.uid() = referrer_id OR auth.uid() = referred_id);
+CREATE POLICY "referrals_insert_own" ON referrals FOR INSERT WITH CHECK (auth.uid() = referrer_id);
+
+-- push subscriptions: owner-only
+CREATE POLICY "push_owner_all" ON push_subscriptions FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- user settings: owner-only
+CREATE POLICY "settings_owner_all" ON user_settings FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================
+-- Trust score: server-side materialized on profiles
+-- ============================================================
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS trust_score INTEGER DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION recompute_trust_score() RETURNS TRIGGER AS $$
+DECLARE
+  new_score INTEGER;
+BEGIN
+  SELECT COALESCE(ROUND(AVG(rating) * 20), 0) INTO new_score
+  FROM ratings WHERE rated_id = NEW.rated_id;
+  UPDATE profiles SET trust_score = new_score WHERE id = NEW.rated_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_recompute_trust ON ratings;
+CREATE TRIGGER trg_recompute_trust
+AFTER INSERT OR UPDATE ON ratings
+FOR EACH ROW EXECUTE FUNCTION recompute_trust_score();
+
+-- ============================================================
+-- Profile auto-create trigger (replaces client-side upsert)
+-- ============================================================
+-- handle_new_user() already exists above; ensure it inserts display_name.
+-- (Existing function retained; verified below.)

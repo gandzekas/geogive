@@ -342,8 +342,9 @@ function renderProfile() {
 }
 
 // ===== COLLECTIONS UI (M45) =====
+if (typeof getCollections === 'function') { getCollections(); } // warm server cache
 function renderCollectionsSection() {
-  var collections = getCollections();
+  var collections = _getCollectionsSync();
   var html = '<div style="margin-top:16px;padding:16px;background:#f3e5f5;border-radius:12px">';
   html += '<h4 style="margin-bottom:8px">📁 Collections</h4>';
   html += '<p style="font-size:0.85rem;color:#666;margin-bottom:8px">Group items into themed bundles.</p>';
@@ -376,7 +377,7 @@ function createCollectionFromInput() {
 window.createCollectionFromInput = createCollectionFromInput;
 
 function openCollection(collectionId) {
-  var col = getCollections().find(function(c) { return c.id === collectionId; });
+  var col = _getCollectionsSync().find(function(c) { return c.id === collectionId; });
   if (!col) return;
   var items = getCollectionItems(collectionId);
   var content = document.getElementById('itemModalContent');

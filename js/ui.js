@@ -587,7 +587,19 @@ function renderFeed() {
     container.innerHTML = '<div class="empty-state"><p>Sign in to see your feed.</p></div>';
     return;
   }
-  var feedItems = getFeedItems();
+  // Server-first: fetch followed users' items from Supabase, fall back to local filter
+  loadFeedItemsFromSupabase().then(function(serverItems) {
+    if (serverItems && serverItems.length > 0) {
+      renderFeedList(container, serverItems);
+    } else {
+      renderFeedList(container, getFeedItems());
+    }
+  });
+  renderFeedList(container, getFeedItems());
+}
+
+function renderFeedList(container, feedItems) {
+  if (!container) return;
   if (feedItems.length === 0) {
     var following = getFollowing();
     if (following.length === 0) {
