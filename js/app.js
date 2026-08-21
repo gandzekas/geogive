@@ -450,3 +450,5 @@ window.addEventListener('appinstalled', function() {
 });
 
 try { window.pushNotify = pushNotify; } catch(e) {}
+
+try { window.shareInvite = shareInvite; } catch(e) {}

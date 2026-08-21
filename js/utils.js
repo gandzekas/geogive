@@ -618,6 +618,22 @@ async function promoteItem(itemId) {
 }
 
 // ===== GEOGIVE PRO (M42) =====
+// ===== INVITE SHEET (Phase 4) =====
+function buildInviteLink() {
+  var code = getReferralCode();
+  return window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(code);
+}
+
+async function shareInvite() {
+  var link = buildInviteLink();
+  var text = 'I am giving away things I no longer need on GeoGive — free stuff, less waste. Join me: ' + link;
+  if (navigator.share) {
+    try { await navigator.share({ title: 'GeoGive', text: text, url: link }); return; } catch(e) {}
+  }
+  try { await navigator.clipboard.writeText(link); showToast('Invite link copied! 📋'); }
+  catch(e) { showToast('Invite: ' + link); }
+}
+
 // ===== STRIPE CHECKOUT (Phase 3) =====
 function stripeConfigured() {
   var sb = getSupabase();
@@ -939,7 +955,7 @@ function shareReferralCode() {
   var shareData = {
     title: 'Join GeoGive with my code!',
     text: 'Use my referral code ' + code + ' to get a free GeoGive Pro trial! Join GeoGive to give away and get free items nearby.',
-    url: window.location.origin + window.location.pathname + '#ref-' + code
+    url: buildInviteLink()
   };
   if (navigator.share) {
     navigator.share(shareData).catch(function() {});
