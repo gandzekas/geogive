@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geogive-v5';
+const CACHE_NAME = 'geogive-v6';
 const OFFLINE_URL = '/index.html';
 var PRECACHE_URLS = [
   '/index.html',

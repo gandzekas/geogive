@@ -399,10 +399,10 @@ function calculateTrustScore(userId) {
 }
 
 function getTrustLevel(score) {
-  if (score >= 80) return { level: 'Trusted', color: '#2d8a4e', icon: '🛡️' };
-  if (score >= 60) return { level: 'Reliable', color: '#4caf50', icon: '✓' };
-  if (score >= 40) return { level: 'Newcomer', color: '#ff9800', icon: '🌱' };
-  return { level: 'Unverified', color: '#9e9e9e', icon: '?' };
+  if (score >= 80) return { level: 'Trusted', color: '#237a3e', icon: '🛡️' };
+  if (score >= 60) return { level: 'Reliable', color: '#00695c', icon: '✓' };
+  if (score >= 40) return { level: 'Newcomer', color: '#b45309', icon: '🌱' };
+  return { level: 'Unverified', color: '#616161', icon: '?' };
 }
 
 function trustBadgeHtml(userId) {

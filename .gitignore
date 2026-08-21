@@ -41,3 +41,10 @@ tmp/
 
 # Coverage
 coverage/
+
+# Local env / secrets / scratch
+android/local.properties
+*.jks
+*.keystore
+logs/
+.lighthouseci/

@@ -19,6 +19,6 @@
 .view-toggle button {
   flex: 1; padding: 8px; border: none; border-radius: 6px;
   background: none; cursor: pointer; font-size: 0.85rem; font-weight: 600;
-  color: var(--gray-400); transition: all 0.2s;
+  color: var(--gray-700); transition: all 0.2s;
 }
 .view-toggle button.active { background: white; color: var(--green); box-shadow: 0 1px 4px rgba(0,0,0,0.1); }

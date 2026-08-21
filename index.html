@@ -3,10 +3,12 @@
 <head>
 <link rel="manifest" href="manifest.json">
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="GeoGive — give away things you no longer need to people nearby. Free stuff, less waste, stronger neighborhoods.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#2d8a4e">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: tile.openstreetmap.org *.tile.openstreetmap.org *.cloudfront.net; font-src 'self' https://unpkg.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co tile.openstreetmap.org https://*.firebaseapp.com https://*.googleapis.com wss://*.firebaseio.com https://unpkg.com;">
 <title>GeoGive - Give Items Away Locally</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2748%27 fill=%27%232d8a4e%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2752%27 text-anchor=%27middle%27%3E%F0%9F%8E%81%3C/text%3E%3C/svg%3E">
 <meta property="og:title" content="GeoGive - Free Stuff Near You">
 <meta property="og:description" content="Give away items to people nearby. Free, local, sustainable.">
 <meta property="og:type" content="website">
@@ -69,7 +71,7 @@
     <div class="loc-status pending" id="locStatus"><span>📡</span> Detecting your location...</div>
     <div class="filter-bar">
       <input type="text" id="searchInput" placeholder="🔍 Search items..." data-fn="debounceSearch">
-      <select id="categoryFilter" data-fn="applyFilters">
+      <select id="categoryFilter" data-fn="applyFilters" aria-label="Filter by category">
         <option value="">All Categories</option>
         <option value="furniture">🪑 Furniture</option>
         <option value="electronics">📱 Electronics</option>
@@ -81,7 +83,7 @@
         <option value="garden">🌱 Garden</option>
         <option value="other">📦 Other</option>
       </select>
-      <select id="statusFilter" data-fn="applyFilters">
+      <select id="statusFilter" data-fn="applyFilters" aria-label="Filter by status">
         <option value="available">Available</option>
         <option value="all">All Status</option>
       </select>
@@ -122,7 +124,7 @@
   </div>
 </main>
 
-<nav class="bottom-nav">
+<nav class="bottom-nav" role="tablist">
   <button class="nav-tab active" data-page="browse" data-fn="switchPage" data-arg="browse" type="button"><span class="nav-icon">🗺️</span> <span data-i18n="browse">Browse</span></button>
   <button class="nav-tab" data-page="feed" data-fn="switchPage" data-arg="feed" type="button"><span class="nav-icon">🏠</span> <span data-i18n="feed">Feed</span></button>
   <button class="nav-tab" data-page="post" data-fn="switchPage" data-arg="post" type="button"><span class="nav-icon">➕</span> <span data-i18n="post">Post</span></button>
@@ -354,21 +356,21 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js?v=1780571000"></script>
-<script src="js/utils.js?v=1780571000"></script>
-<script src="js/i18n.js?v=1780571000"></script>
-<script src="js/geo.js?v=1780571000"></script>
-<script src="js/map.js?v=1780571000"></script>
-<script src="js/auth.js?v=1780571000"></script>
-<script src="js/items.js?v=1780571000"></script>
-<script src="js/chats.js?v=1780571000"></script>
-<script src="js/requests.js?v=1780571000"></script>
-<script src="js/images.js?v=1780571000"></script>
-<script src="js/ui.js?v=1780571000"></script>
-<script src="js/profile.js?v=1780571000"></script>
-<script src="js/notifications.js?v=1780571000"></script>
-<script src="js/offline.js?v=1780571000"></script>
-<script src="js/router.js?v=1780571000"></script>
-<script src="js/app.js?v=1780571000"></script>
+<script src="js/config.js?v=1787298602"></script>
+<script src="js/utils.js?v=1787298602"></script>
+<script src="js/i18n.js?v=1787298602"></script>
+<script src="js/geo.js?v=1787298602"></script>
+<script src="js/map.js?v=1787298602"></script>
+<script src="js/auth.js?v=1787298602"></script>
+<script src="js/items.js?v=1787298602"></script>
+<script src="js/chats.js?v=1787298602"></script>
+<script src="js/requests.js?v=1787298602"></script>
+<script src="js/images.js?v=1787298602"></script>
+<script src="js/ui.js?v=1787298602"></script>
+<script src="js/profile.js?v=1787298602"></script>
+<script src="js/notifications.js?v=1787298602"></script>
+<script src="js/offline.js?v=1787298602"></script>
+<script src="js/router.js?v=1787298602"></script>
+<script src="js/app.js?v=1787298602"></script>
 </body>
 </html>

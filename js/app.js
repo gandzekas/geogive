@@ -204,6 +204,7 @@ function initAccessibility() {
 
   document.querySelectorAll('.nav-tab').forEach(function(tab) {
     tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', tab.classList.contains('active') ? 'true' : 'false');
     tab.setAttribute('aria-label', tab.textContent.trim());
   });
 
