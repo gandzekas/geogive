@@ -144,6 +144,7 @@ function openModal(id) {
   el.classList.remove('hidden');
   el.classList.add('active');
   el.style.display = 'flex';
+  if (typeof trapModalFocus === 'function') trapModalFocus(el);
 }
 
 function closeModal(id) {

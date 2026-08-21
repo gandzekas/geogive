@@ -208,7 +208,26 @@ document.addEventListener('DOMContentLoaded', function() {
   handleDeepLink();
 });
 
+function trapModalFocus(overlay) {
+  if (!overlay || overlay.dataset.focusTrap === 'on') return;
+  overlay.dataset.focusTrap = 'on';
+  overlay.addEventListener('keydown', function(e) {
+    if (e.key !== 'Tab') return;
+    var focusables = overlay.querySelectorAll('button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])');
+    if (!focusables.length) return;
+    var first = focusables[0];
+    var last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first.focus();
+    }
+  });
+}
+
 function initAccessibility() {
+  // Wire focus traps on all modals (Phase 5)
+  document.querySelectorAll('.modal-overlay').forEach(trapModalFocus);
   var main = document.querySelector('main');
   if (main) { main.setAttribute('role', 'main'); main.id = 'main-content'; }
 
@@ -452,3 +471,21 @@ window.addEventListener('appinstalled', function() {
 try { window.pushNotify = pushNotify; } catch(e) {}
 
 try { window.shareInvite = shareInvite; } catch(e) {}
+
+// ===== GLOBAL ERROR BOUNDARY (Phase 5) =====
+// Friendly toast for users, detailed log for debugging. Never sends data anywhere.
+window.onerror = function(message, source, lineno, colno, error) {
+  try {
+    console.error('[GeoGive]', message, source + ':' + lineno + ':' + colno, error);
+    if (typeof showToast === 'function') {
+      showToast('Something went wrong. Please try again.');
+    }
+  } catch(e) {}
+  return true; // prevents default error UI
+};
+
+window.addEventListener('unhandledrejection', function(event) {
+  try {
+    console.warn('[GeoGive] Unhandled promise rejection:', event.reason);
+  } catch(e) {}
+});
