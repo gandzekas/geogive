@@ -374,8 +374,14 @@ function loadScript(src) {
 // ===== TRUST SCORE (M20) =====
 function calculateTrustScore(userId) {
   if (!userId) return 0;
+  // Server-computed score wins when we have it (profiles.trust_score via trigger)
+  var sb = getSupabase();
+  if (sb && window.state.user && userId === window.state.user.id && window.state.userProfile) {
+    var ts = window.state.userProfile.trust_score;
+    if (typeof ts === 'number' && ts >= 0) return ts;
+  }
   var score = 50; // Base score for new users
-  
+
   // Get ratings for this user
   var ratings = getRatingsForUser(userId);
   if (ratings.length > 0) {

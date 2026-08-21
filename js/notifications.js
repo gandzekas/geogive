@@ -102,6 +102,21 @@ async function subscribeToPush() {
     });
     // Store subscription locally (would be sent to server in production)
     localStorage.setItem('geogive_push_subscription', JSON.stringify(subscription));
+  // Persist subscription to DB so server can push to any device (Phase 2 prep)
+  (async function() {
+    var sb = getSupabase();
+    if (!sb || !window.state.user || !subscription) return;
+    try {
+      var keys = subscription.toJSON().keys || {};
+      await sb.from('push_subscriptions').upsert({
+        user_id: window.state.user.id,
+        endpoint: subscription.endpoint,
+        keys_p256dh: keys.p256dh || '',
+        keys_auth: keys.auth || '',
+        user_agent: navigator.userAgent
+      }, { onConflict: 'endpoint' });
+    } catch(e) { console.warn('push sub DB save:', e); }
+  })();
     return true;
   } catch(e) {
     console.warn('GeoGive: Push subscription failed:', e);
