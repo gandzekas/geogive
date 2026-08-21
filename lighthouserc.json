@@ -11,25 +11,25 @@
     },
     "assert": {
       "assertions": {
-        "performance": [
+        "categories:performance": [
           "error",
           {
             "minScore": 0.9
           }
         ],
-        "accessibility": [
+        "categories:accessibility": [
           "error",
           {
             "minScore": 0.9
           }
         ],
-        "best-practices": [
+        "categories:best-practices": [
           "error",
           {
             "minScore": 0.9
           }
         ],
-        "seo": [
+        "categories:seo": [
           "error",
           {
             "minScore": 0.9
